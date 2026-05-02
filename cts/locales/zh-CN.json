@@ -73,7 +73,7 @@
     "column_note": "说明"
   },
   "inspector": {
-    "title": "Inspector",
+    "title": "检查器",
     "subtitle": "右侧专注查看与编辑单条变量，减少误改。",
     "key": "变量名",
     "source": "来源",
