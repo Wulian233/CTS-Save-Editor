@@ -1,12 +1,8 @@
-from pathlib import Path
 import struct
+from pathlib import Path
 
-from .binary import (
-    encode_7bit_int,
-    extract_custom_vars,
-    extract_meta_vars,
-    scan_string_records,
-)
+from .binary import (encode_7bit_int, extract_custom_vars, extract_meta_vars,
+                     scan_string_records)
 from .categories import classify_var_key
 from .models import CustomVarEntry, MetaVarEntry, SaveView
 from .numbers import normalize_to_owned_exp

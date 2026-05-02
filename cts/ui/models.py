@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from ..save.logic import CustomVarEntry, MetaVarEntry
 from ..i18n import tr
+from ..save.logic import CustomVarEntry, MetaVarEntry
 
 type EntryModel = CustomVarEntry | MetaVarEntry
 

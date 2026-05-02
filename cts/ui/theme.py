@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Any, cast
 
-
 PALETTE = {
     "bg": "#16181c",
     "panel": "#1d2127",

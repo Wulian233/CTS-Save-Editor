@@ -1,7 +1,6 @@
+import json
 import locale
 from pathlib import Path
-
-import json
 
 
 class I18nManager:

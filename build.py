@@ -5,29 +5,26 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parent
-ENTRYPOINT = ROOT_DIR / "main.py"
+ROOT = Path(__file__).resolve().parent
+SYSTEM = platform.system()
 
 NAME = "CTS-Save-Editor"
-WORK_PATH = ROOT_DIR / "build" / "pyinstaller" / "work"
-SPEC_PATH = ROOT_DIR / "build" / "pyinstaller" / "spec"
-ICON_PATH = ROOT_DIR / "cts" / "icon.ico"
-LOCALES_PATH = ROOT_DIR / "cts" / "locales"
-UPX_DIR = Path(os.environ["UPX_DIR"]) if "UPX_DIR" in os.environ else None
-CLEAN = True
+ENTRYPOINT = ROOT / "main.py"
 
-EXCLUDED_MODULES = [
-    "idlelib",
-]
+WORK_PATH = ROOT / "build" / "pyinstaller" / "work"
+SPEC_PATH = ROOT / "build" / "pyinstaller" / "spec"
+
+ICON_DIR = ROOT / "cts" / "icon"
+ICON_PATH = ICON_DIR / ("icon.icns" if SYSTEM == "Darwin" else "icon.ico")
+LOCALES_PATH = ROOT / "cts" / "locales"
+
+EXCLUDED_MODULES = ("idlelib", "unittest", "test", "pydoc")
 
 
-def main(extra_args=None) -> int:
+def main(extra_args: list[str] | None = None) -> int:
     ensure_pyinstaller()
 
-    if CLEAN:
-        for path in (WORK_PATH, SPEC_PATH):
-            shutil.rmtree(path, ignore_errors=True)
-            Path(path).mkdir(parents=True, exist_ok=True)
+    reset_dirs(WORK_PATH, SPEC_PATH)
 
     command = [
         sys.executable,
@@ -35,45 +32,71 @@ def main(extra_args=None) -> int:
         "PyInstaller",
         "--noconfirm",
         "--clean",
-        "--onefile",
         "--windowed",
         "--optimize",
         "2",
         "--name",
         NAME,
-        "--icon",
-        str(ICON_PATH),
-        "--add-data",
-        _data_arg(ICON_PATH, Path("cts") / "icon.ico"),
-        "--add-data",
-        _data_arg(LOCALES_PATH, Path("cts") / "locales"),
         "--workpath",
         str(WORK_PATH),
         "--specpath",
         str(SPEC_PATH),
+        *([] if SYSTEM == "Darwin" else ["--onefile"]),
+        *optional_icon(),
+        *data_args(),
+        *exclude_args(),
+        *([] if SYSTEM == "Windows" else ["--strip"]),
+        *upx_args(),
+        *(extra_args or []),
         str(ENTRYPOINT),
     ]
 
-    for module in EXCLUDED_MODULES:
-        command.extend(["--exclude-module", module])
-
-    if platform.system() != "Windows":
-        command.append("--strip")
-
-    if UPX_DIR:
-        command.extend(["--upx-dir", str(UPX_DIR)])
-
-    if extra_args:
-        command[3:3] = extra_args
-
     print("Command:", " ".join(command))
-
     return subprocess.run(command).returncode
 
 
-def _data_arg(source: Path, target: Path) -> str:
-    separator = ";" if platform.system() == "Windows" else ":"
+def reset_dirs(*paths: Path) -> None:
+    for path in paths:
+        shutil.rmtree(path, ignore_errors=True)
+        path.mkdir(parents=True, exist_ok=True)
+
+
+def optional_icon() -> list[str]:
+    return ["--icon", str(ICON_PATH)] if ICON_PATH.exists() else []
+
+
+def data_args() -> list[str]:
+    items = [
+        (ICON_DIR / "icon.png", Path("cts/icon/icon.png")),
+        (ICON_DIR / "icon.ico", Path("cts/icon/icon.ico")),
+        (ICON_DIR / "icon.icns", Path("cts/icon/icon.icns")),
+        (LOCALES_PATH, Path("cts/locales")),
+    ]
+
+    args = []
+    for source, target in items:
+        if source.exists():
+            args.extend(["--add-data", data_arg(source, target)])
+
+    return args
+
+
+def data_arg(source: Path, target: Path) -> str:
+    separator = ";" if SYSTEM == "Windows" else ":"
     return f"{source}{separator}{target}"
+
+
+def exclude_args() -> list[str]:
+    return [arg for module in EXCLUDED_MODULES for arg in ("--exclude-module", module)]
+
+
+def upx_args() -> list[str]:
+    upx_dir = os.environ.get("UPX_DIR")
+
+    if SYSTEM == "Windows" and upx_dir:
+        return ["--upx-dir", upx_dir]
+
+    return []
 
 
 def ensure_pyinstaller() -> None:
@@ -84,5 +107,4 @@ def ensure_pyinstaller() -> None:
 
 
 if __name__ == "__main__":
-    extra = sys.argv[1:]
-    raise SystemExit(main(extra))
+    raise SystemExit(main(sys.argv[1:]))

@@ -1,27 +1,43 @@
+import ctypes
+import shutil
 import subprocess
 import sys
-import shutil
 import threading
+import tkinter as tk
 import webbrowser
+from datetime import datetime
 from itertools import chain
 from pathlib import Path
-
-from datetime import datetime
-import tkinter as tk
-from hidpi_tk import DPIAwareTk
 from tkinter import filedialog, messagebox, ttk
 
-from ..save.logic import (
-    CustomVarEntry,
-    MetaVarEntry,
-    SaveBinaryEditor,
-    SaveView,
-)
+from hidpi_tk import DPIAwareTk
+
+from ..i18n import i18n, tr
 from ..save.locations import SaveLocation, iter_default_save_locations
+from ..save.logic import (CustomVarEntry, MetaVarEntry, SaveBinaryEditor,
+                          SaveView)
 from ..update import UpdateInfo, check_for_update
 from .models import EntryModel, TableRow, section_labels
 from .theme import configure_theme
-from ..i18n import i18n, tr
+
+APP_USER_MODEL_ID = "CTS.SaveEditor"
+
+
+def resource_path(relative_path: str) -> Path:
+    if hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS) / relative_path
+
+    return Path(__file__).resolve().parents[2] / relative_path
+
+
+def set_windows_app_user_model_id() -> None:
+    if sys.platform != "win32":
+        return
+
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)
+    except AttributeError, OSError:
+        pass
 
 
 class SaveEditorApp:
@@ -33,7 +49,7 @@ class SaveEditorApp:
         self.root = root
         self.root.title(tr("app.title"))
         self.root.minsize(1360, 760)
-        self.root.iconbitmap(Path(__file__).parent.parent / "icon.ico")
+        self._set_window_icon()
         self._set_default_window_state()
 
         self.editor: SaveBinaryEditor | None = None
@@ -61,6 +77,20 @@ class SaveEditorApp:
         self._build_ui()
         self._bind_shortcuts()
         self.root.after(1500, self.check_for_updates_on_startup)
+
+    def _set_window_icon(self) -> None:
+        icon_path = resource_path("cts/icon/icon.png")
+        fallback_icon_path = resource_path("cts/icon/icon.ico")
+
+        try:
+            icon = tk.PhotoImage(file=icon_path)
+            self.root.iconphoto(True, icon)
+            self._window_icon = icon
+        except tk.TclError:
+            try:
+                self.root.iconbitmap(default=str(fallback_icon_path))
+            except tk.TclError:
+                pass
 
     def _set_default_window_state(self) -> None:
         try:
@@ -1327,6 +1357,7 @@ class SaveEditorApp:
 
 
 def main() -> None:
+    set_windows_app_user_model_id()
     root = DPIAwareTk()
     app = SaveEditorApp(root)
     root.after_idle(app.autoload_default_save)

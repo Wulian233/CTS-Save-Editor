@@ -16,15 +16,15 @@ jobs:
         include:
           - os: windows-latest
             artifact_name: CTS-Save-Editor-windows
-            executable: dist/CTS-Save-Editor.exe
+            artifact_path: dist/CTS-Save-Editor.exe
 
           - os: ubuntu-latest
             artifact_name: CTS-Save-Editor-linux
-            executable: dist/CTS-Save-Editor
+            artifact_path: dist/CTS-Save-Editor
 
           - os: macos-latest
             artifact_name: CTS-Save-Editor-macos-arm64
-            executable: dist/CTS-Save-Editor
+            artifact_path: dist/CTS-Save-Editor.app
 
     steps:
       - name: Checkout
@@ -33,7 +33,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3"
+          python-version: "3.14"
 
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
@@ -55,4 +55,4 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.executable }}
+          path: ${{ matrix.artifact_path }}

@@ -1,9 +1,8 @@
 import ctypes
-from dataclasses import dataclass
-from pathlib import Path
 import sys
 import uuid
-
+from dataclasses import dataclass
+from pathlib import Path
 
 _FOLDERID_LOCAL_APP_DATA_LOW = bytes.fromhex(
     uuid.UUID("A520A1A4-1780-4FF6-BD18-167343C5AF16").bytes_le.hex()

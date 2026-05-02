@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from itertools import chain
 
-from .numbers import owned_exp_to_decimal
 from ..i18n import tr
+from .numbers import owned_exp_to_decimal
 
 
 @dataclass(slots=True)
