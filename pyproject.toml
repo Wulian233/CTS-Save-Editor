@@ -1,0 +1,13 @@
+[project]
+name = "Cell-to-Singularity-Save-Editor"
+version = "0.1.0"
+description = "Cell to Singularity Save Editor"
+requires-python = ">=3.14"
+dependencies = [
+    "hidpi-tk"
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller",
+]

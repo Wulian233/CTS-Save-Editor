@@ -1,0 +1,69 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: CTS-Save-Editor-windows
+            executable: dist/CTS-Save-Editor.exe
+
+          - os: ubuntu-latest
+            artifact_name: CTS-Save-Editor-linux
+            executable: dist/CTS-Save-Editor
+
+          - os: macos-latest
+            artifact_name: CTS-Save-Editor-macos-arm64
+            executable: dist/CTS-Save-Editor
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Install UPX on Windows
+        if: runner.os == 'Windows'
+        uses: crazy-max/ghaction-upx@v4
+        with:
+          version: latest
+          install-only: true
+
+      - name: Install UPX on Linux
+        if: runner.os == 'Linux'
+        uses: crazy-max/ghaction-upx@v4
+        with:
+          version: latest
+          install-only: true
+
+      - name: Install UPX on macOS
+        if: runner.os == 'macOS'
+        run: brew install upx
+
+      - name: Build
+        run: uv run python build.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.executable }}
