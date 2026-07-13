@@ -14,10 +14,10 @@ from hidpi_tk import DPIAwareTk
 
 from ..i18n import i18n, tr
 from ..save.locations import SaveLocation, iter_default_save_locations
-from ..save.logic import (CustomVarEntry, MetaVarEntry, SaveBinaryEditor,
-                          SaveView)
+from ..save.logic import CustomVarEntry, MetaVarEntry, SaveBinaryEditor, SaveView
 from ..update import UpdateInfo, check_for_update
 from .models import EntryModel, TableRow, section_labels
+from .smooth_sheet import SmoothSheet
 from .theme import configure_theme
 
 APP_USER_MODEL_ID = "CTS.SaveEditor"
@@ -43,7 +43,8 @@ def set_windows_app_user_model_id() -> None:
 class SaveEditorApp:
     LEFT_PANEL_MIN_WIDTH = 280
     CENTER_PANEL_MIN_WIDTH = 720
-    RIGHT_PANEL_MIN_WIDTH = 320
+    RIGHT_PANEL_MIN_WIDTH = 420
+    TABLE_MIN_COLUMN_WIDTHS = (96, 130, 220, 160, 280)
 
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -71,6 +72,8 @@ class SaveEditorApp:
         self._localized_buttons: dict[str, ttk.Button] = {}
         self._inspector_labels: dict[str, ttk.Label] = {}
         self._update_dialog_open = False
+        self._table_resize_after_id: str | None = None
+        self._last_table_width = 0
 
         self._build_state()
         self.palette = configure_theme(self.root)
@@ -113,7 +116,6 @@ class SaveEditorApp:
         self.original_value_var = tk.StringVar(value=tr("common.dash"))
         self.value_type_var = tk.StringVar(value=tr("inspector.value_type_text"))
         self.category_note_var = tk.StringVar(value=tr("common.no_category_note"))
-        self.meta_var = tk.StringVar(value=tr("message.waiting_ready"))
         self.selected_source_var = tk.StringVar(value=tr("common.dash"))
         self.selected_category_var = tk.StringVar(value=tr("common.dash"))
         self.search_hint_var = tk.StringVar(value=tr("filters.hint"))
@@ -399,32 +401,47 @@ class SaveEditorApp:
         )
         self._localized_labels["filters.overview"].grid(row=0, column=0, sticky="w")
 
-        columns = ("section", "category", "key", "value", "note")
-        self.tree = ttk.Treeview(
-            table_panel, columns=columns, show="headings", selectmode="browse"
+        self.tree = SmoothSheet(
+            table_panel,
+            headers=self._table_headers(),
+            show_row_index=False,
+            show_x_scrollbar=True,
+            show_y_scrollbar=True,
+            default_row_height=28,
+            font=("Microsoft YaHei UI", 10, "normal"),
+            header_font=("Microsoft YaHei UI", 10, "normal"),
+            empty_vertical=0,
+            empty_horizontal=0,
+            scrollbar_theme_inheritance="clam",
         )
-        self.tree.heading("section", text=tr("filters.column_source"))
-        self.tree.heading("category", text=tr("filters.column_category"))
-        self.tree.heading("key", text=tr("filters.column_key"))
-        self.tree.heading("value", text=tr("filters.column_value"))
-        self.tree.heading("note", text=tr("filters.column_note"))
-        self.tree.column(
-            "section", width=112, minwidth=96, stretch=False, anchor="center"
-        )
-        self.tree.column("category", width=152, minwidth=130, stretch=False)
-        self.tree.column("key", width=300, minwidth=220, stretch=True)
-        self.tree.column("value", width=220, minwidth=160, stretch=True)
-        self.tree.column("note", width=420, minwidth=280, stretch=True)
         self.tree.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
-        self.tree.bind("<<TreeviewSelect>>", self.on_select)
-        self.tree.bind("<Double-1>", self._focus_value_editor)
-
-        scroll = ttk.Scrollbar(table_panel, orient=tk.VERTICAL, command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scroll.set)
-        scroll.grid(row=1, column=1, sticky="ns", pady=(10, 0))
+        self.tree.bind("<Configure>", self._schedule_table_resize, add="+")
+        self.tree.bind("<Map>", self._schedule_initial_table_resize, add="+")
+        self.tree.set_column_widths(self.TABLE_MIN_COLUMN_WIDTHS)
+        self.tree.set_options(
+            table_bg=self.palette["panel"],
+            table_fg=self.palette["text"],
+            table_grid_fg=self.palette["border"],
+            header_bg=self.palette["panel_alt"],
+            header_fg=self.palette["muted"],
+            header_grid_fg=self.palette["border"],
+            table_selected_rows_bg=self.palette["selection"],
+            table_selected_rows_fg=self.palette["text"],
+            table_selected_rows_border_fg=self.palette["selection"],
+            frame_bg=self.palette["panel"],
+            vertical_scroll_background=self.palette["panel_soft"],
+            vertical_scroll_troughcolor=self.palette["bg"],
+            horizontal_scroll_background=self.palette["panel_soft"],
+            horizontal_scroll_troughcolor=self.palette["bg"],
+        )
+        self.tree.enable_bindings("single_select", "arrowkeys")
+        self.tree.bind("<<SheetSelect>>", self._on_sheet_select)
+        self.tree.bind("<Double-Button-1>", self._focus_value_editor)
+        self.tree.enable_smooth_scrolling()
 
     def _build_right_panel(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(0, weight=1)
 
         inspector = ttk.Frame(parent, style="Panel.TFrame", padding=12)
         inspector.grid(row=0, column=0, sticky="nsew")
@@ -555,22 +572,38 @@ class SaveEditorApp:
         inspector.columnconfigure(1, weight=1)
         self._set_editor_mode("text")
 
-        self.meta_panel = ttk.LabelFrame(
-            parent,
-            text=tr("inspector.live_meta_title"),
-            style="Tool.TLabelframe",
-            padding=12,
-        )
-        self.meta_panel.grid(row=1, column=0, sticky="ew", pady=(12, 0))
-        ttk.Label(
-            self.meta_panel, textvariable=self.meta_var, style="Accent.TLabel"
-        ).pack(anchor="w")
-        self._localized_labels["inspector.live_meta_desc"] = ttk.Label(
-            self.meta_panel,
-            text=tr("inspector.live_meta_desc"),
-            style="Muted.TLabel",
-        )
-        self._localized_labels["inspector.live_meta_desc"].pack(anchor="w", pady=(6, 0))
+    def _schedule_initial_table_resize(self, _event=None) -> None:
+        self._schedule_table_resize(force=True)
+
+    def _schedule_table_resize(self, _event=None, *, force: bool = False) -> None:
+        if force:
+            self._last_table_width = 0
+        if self._table_resize_after_id is None:
+            self._table_resize_after_id = self.root.after_idle(
+                self._resize_table_columns
+            )
+
+    def _resize_table_columns(self) -> None:
+        self._table_resize_after_id = None
+        width = self.tree.winfo_width()
+        if width <= 1 or abs(width - self._last_table_width) < 2:
+            return
+        self._last_table_width = width
+
+        available = max(sum(self.TABLE_MIN_COLUMN_WIDTHS), width - 18)
+        extra = available - sum(self.TABLE_MIN_COLUMN_WIDTHS)
+        key_extra = round(extra * 0.30)
+        value_extra = round(extra * 0.15)
+        note_extra = extra - key_extra - value_extra
+        widths = [
+            self.TABLE_MIN_COLUMN_WIDTHS[0],
+            self.TABLE_MIN_COLUMN_WIDTHS[1],
+            self.TABLE_MIN_COLUMN_WIDTHS[2] + key_extra,
+            self.TABLE_MIN_COLUMN_WIDTHS[3] + value_extra,
+            self.TABLE_MIN_COLUMN_WIDTHS[4] + note_extra,
+        ]
+        self.tree.set_column_widths(widths)
+        self.tree.refresh()
 
     def _init_pane_constraints(
         self, left: ttk.Frame, center: ttk.Frame, right: ttk.Frame
@@ -623,16 +656,30 @@ class SaveEditorApp:
         if target_locale == i18n.get_locale():
             return
         category_was_all = self.category_var.get().strip() == tr("section.all")
+        selected_category_key = None
+        if not category_was_all and self.view:
+            selected_category = self.category_var.get().strip()
+            selected_category_key = next(
+                (
+                    entry.category_key
+                    for entry in self.view.entries
+                    if entry.category == selected_category
+                ),
+                None,
+            )
         i18n.set_locale(target_locale)
-        self._refresh_localized_ui(category_was_all=category_was_all)
+        self._refresh_localized_ui(
+            category_was_all=category_was_all,
+            selected_category_key=selected_category_key,
+        )
 
-    def _refresh_localized_ui(self, category_was_all: bool) -> None:
-        selected = self._selected_entry()
-        selected_key = selected.key if selected else None
+    def _refresh_localized_ui(
+        self, category_was_all: bool, selected_category_key: str | None
+    ) -> None:
+        selected_identity = self._selected_entry_identity()
         selected_section = self.section_reverse_labels.get(
             self.section_var.get(), "all"
         )
-        selected_category = self.category_var.get()
 
         self.section_labels = section_labels()
         self.section_reverse_labels = {
@@ -659,7 +706,6 @@ class SaveEditorApp:
         for key, widget in self._inspector_labels.items():
             widget.configure(text=tr(key))
 
-        self.meta_panel.configure(text=tr("inspector.live_meta_title"))
         self.search_hint_var.set(tr("filters.hint"))
         self.section_box.configure(values=list(self.section_labels.values()))
         self.section_var.set(
@@ -668,17 +714,15 @@ class SaveEditorApp:
         self._populate_location_list()
         self._refresh_category_filter()
         self.category_var.set(
-            tr("section.all") if category_was_all else selected_category
+            tr("section.all")
+            if category_was_all or not selected_category_key
+            else tr(selected_category_key)
         )
-        self.tree.heading("section", text=tr("filters.column_source"))
-        self.tree.heading("category", text=tr("filters.column_category"))
-        self.tree.heading("key", text=tr("filters.column_key"))
-        self.tree.heading("value", text=tr("filters.column_value"))
-        self.tree.heading("note", text=tr("filters.column_note"))
+        self.tree.headers(self._table_headers())
         if self.view:
             self.render_table()
-            if selected_key:
-                self._select_entry_by_key(selected_key)
+            if selected_identity:
+                self._select_entry_by_identity(*selected_identity)
             self.set_status(tr("message.loaded"))
         elif self._is_loading and self.current_file:
             self.set_status(tr("message.loading"))
@@ -886,15 +930,6 @@ class SaveEditorApp:
             str(self.current_file) if self.current_file else tr("common.empty_file")
         )
         self.status_var.set(msg)
-        self.meta_var.set(
-            tr(
-                "common.live_meta",
-                count=self.count_var.get(),
-                state=tr("common.state_dirty")
-                if self.dirty
-                else tr("common.state_synced"),
-            )
-        )
 
     def open_file(self) -> None:
         path = filedialog.askopenfilename(
@@ -1075,43 +1110,57 @@ class SaveEditorApp:
             self.load_file(self.current_file)
 
     def render_table(self) -> None:
-        previous = self._selected_entry()
-        previous_key = previous.key if previous else None
-
-        children = self.tree.get_children()
-        if children:
-            self.tree.delete(*children)
+        self.tree.stop_smooth_scrolling()
+        previous_identity = self._selected_entry_identity()
         self.item_map.clear()
 
         if not self.view:
+            self.tree.set_sheet_data([], reset_col_positions=False)
+            self._schedule_table_resize(force=True)
             self.count_var.set(tr("common.items_count", shown=0, total=0))
             self._update_dashboard(visible=0)
             self._clear_inspector()
             return
 
-        shown = 0
-        matched_iid = None
+        data: list[list[str]] = []
+        matched_row: int | None = None
         for row in self._table_rows():
             if not self._row_matches_filters(row):
                 continue
-            self._insert_row(row)
-            shown += 1
-            if previous_key and row.entry.key == previous_key and matched_iid is None:
-                matched_iid = row.iid
+            entry = row.entry
+            row_index = len(data)
+            data.append(
+                [
+                    self.section_labels.get(row.section, row.section),
+                    entry.category,
+                    entry.key,
+                    entry.display_value,
+                    entry.note,
+                ]
+            )
+            self.item_map[str(row_index)] = entry
+            if (
+                previous_identity == (row.section, row.entry.key)
+                and matched_row is None
+            ):
+                matched_row = row_index
 
+        self.tree.set_sheet_data(
+            data,
+            reset_col_positions=False,
+            reset_row_positions=True,
+        )
+        self._schedule_table_resize(force=True)
+
+        shown = len(data)
         total = len(self.view.entries)
         self.count_var.set(tr("common.items_count", shown=shown, total=total))
         self._update_dashboard(visible=shown)
 
-        if matched_iid:
-            self.tree.selection_set(matched_iid)
-            self.tree.focus(matched_iid)
-            self.tree.see(matched_iid)
+        if matched_row is not None:
+            self._select_table_row(matched_row)
         elif shown:
-            first = self.tree.get_children()[0]
-            self.tree.selection_set(first)
-            self.tree.focus(first)
-            self.tree.see(first)
+            self._select_table_row(0)
         else:
             self._clear_inspector()
 
@@ -1138,16 +1187,22 @@ class SaveEditorApp:
             return []
         return list(
             chain.from_iterable(
-                (
-                    TableRow(f"{section}::{idx}", section, entry)
-                    for idx, entry in enumerate(entries)
-                )
+                (TableRow(section, entry) for entry in entries)
                 for section, entries in (
                     ("custom", self.view.custom_vars),
                     ("meta", self.view.meta_vars),
                 )
             )
         )
+
+    def _table_headers(self) -> list[str]:
+        return [
+            tr("filters.column_source"),
+            tr("filters.column_category"),
+            tr("filters.column_key"),
+            tr("filters.column_value"),
+            tr("filters.column_note"),
+        ]
 
     def _row_matches_filters(self, row: TableRow) -> bool:
         section_filter = self.section_var.get().strip()
@@ -1175,22 +1230,6 @@ class SaveEditorApp:
             ]
         ).casefold()
         return q in searchable
-
-    def _insert_row(self, row: TableRow) -> None:
-        entry = row.entry
-        self.tree.insert(
-            "",
-            tk.END,
-            iid=row.iid,
-            values=(
-                self.section_labels.get(row.section, row.section),
-                entry.category,
-                entry.key,
-                entry.display_value,
-                entry.note,
-            ),
-        )
-        self.item_map[row.iid] = entry
 
     def _refresh_category_filter(self) -> None:
         if not self.view:
@@ -1220,6 +1259,19 @@ class SaveEditorApp:
         self.selected_category_var.set(entry.category)
         self.category_note_var.set(entry.note or tr("common.no_category_note_short"))
         self._set_note_text(self.category_note_var.get())
+
+    def _on_sheet_select(self, _event=None) -> None:
+        selected = self.tree.get_currently_selected()
+        if not selected:
+            self._clear_inspector()
+            return
+        if selected.type_ != "rows":
+            self.tree.select_row(selected.row, run_binding_func=False)
+        self.on_select()
+
+    def _select_table_row(self, row: int) -> None:
+        self.tree.select_row(row, run_binding_func=False)
+        self.tree.see(row, 0)
 
     def _set_note_text(self, text: str) -> None:
         self.note_text.configure(state="normal")
@@ -1282,18 +1334,24 @@ class SaveEditorApp:
             messagebox.showerror(tr("dialog.change_failed_title"), str(ex))
 
     def _selected_entry(self) -> EntryModel | None:
-        selected = self.tree.selection()
+        selected = self.tree.get_currently_selected()
         if not selected:
             return None
-        return self.item_map.get(selected[0])
+        return self.item_map.get(str(selected.row))
 
-    def _select_entry_by_key(self, key: str) -> None:
-        for iid, entry in self.item_map.items():
-            if entry.key != key:
+    def _selected_entry_identity(self) -> tuple[str, str] | None:
+        entry = self._selected_entry()
+        if not entry:
+            return None
+        section = "custom" if isinstance(entry, CustomVarEntry) else "meta"
+        return section, entry.key
+
+    def _select_entry_by_identity(self, section: str, key: str) -> None:
+        for row, entry in self.item_map.items():
+            entry_section = "custom" if isinstance(entry, CustomVarEntry) else "meta"
+            if entry.key != key or entry_section != section:
                 continue
-            self.tree.selection_set(iid)
-            self.tree.focus(iid)
-            self.tree.see(iid)
+            self._select_table_row(int(row))
             self.on_select()
             return
 

@@ -165,16 +165,6 @@ def _configure_styles(style: ttk.Style, palette: dict[str, str]) -> None:
             "bordercolor": palette["bg"],
             "arrowcolor": palette["muted"],
         },
-        "Tool.TLabelframe": {
-            "background": palette["panel"],
-            "foreground": palette["text"],
-            **bordered_panel,
-        },
-        "Tool.TLabelframe.Label": {
-            "background": palette["panel"],
-            "foreground": palette["muted"],
-            "font": HEADER_FONT,
-        },
     }
 
     for name, options in styles.items():

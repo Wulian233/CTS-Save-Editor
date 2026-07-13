@@ -19,9 +19,6 @@
     "no_category_note": "Select a row to inspect its note.",
     "no_category_note_short": "No note.",
     "items_count": "{shown} / {total} items",
-    "live_meta": "{count} | {state}",
-    "state_dirty": "Unsaved changes",
-    "state_synced": "File synced",
     "ready": "READY",
     "missing": "MISS "
   },
@@ -84,9 +81,7 @@
     "value_type_number": "Number",
     "value_type_boolean": "Boolean",
     "new_value": "New Value",
-    "category_note": "Note",
-    "live_meta_title": "Live Meta",
-    "live_meta_desc": "Changes are re-parsed immediately to refresh categories and the table."
+    "category_note": "Note"
   },
   "dialog": {
     "select_save": "Select Save File",
@@ -94,6 +89,7 @@
     "cts_save": "Cell Save",
     "all_files": "All Files",
     "path_title": "Path",
+    "open_failed_title": "Open Failed",
     "file_not_found_title": "File Not Found",
     "hint_title": "Hint",
     "invalid_value_title": "Invalid Value",
@@ -105,7 +101,6 @@
   },
   "message": {
     "waiting_load": "Waiting for a save file",
-    "waiting_ready": "Waiting",
     "loading": "Loading save data, please wait...",
     "loaded": "Save loaded. You can now filter and edit values.",
     "load_failed": "Failed to load save data.",

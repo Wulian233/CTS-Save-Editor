@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.request import Request, urlopen
 
-CURRENT_VERSION = "0.1.0"
+CURRENT_VERSION = "0.2.0"
 DEFAULT_UPDATE_JSON_URL = "http://cdn.maxing.site/update/app/cts_save_editor.json"
 UPDATE_JSON_URL = os.environ.get("CTS_UPDATE_JSON_URL", DEFAULT_UPDATE_JSON_URL).strip()
 UPDATE_TIMEOUT_SECONDS = 6

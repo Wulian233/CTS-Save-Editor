@@ -16,7 +16,6 @@ def section_labels() -> dict[str, str]:
 
 @dataclass(slots=True, frozen=True)
 class TableRow:
-    iid: str
     section: str
     entry: EntryModel
 

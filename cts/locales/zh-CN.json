@@ -19,9 +19,6 @@
     "no_category_note": "选择一条记录后可查看说明",
     "no_category_note_short": "暂无说明",
     "items_count": "{shown} / {total} 项",
-    "live_meta": "{count} | {state}",
-    "state_dirty": "已修改未保存",
-    "state_synced": "文件已同步",
     "ready": "READY",
     "missing": "MISS "
   },
@@ -84,9 +81,7 @@
     "value_type_number": "数字",
     "value_type_boolean": "布尔",
     "new_value": "新值",
-    "category_note": "说明",
-    "live_meta_title": "Live Meta",
-    "live_meta_desc": "修改后会重新解析存档并刷新分类与表格。"
+    "category_note": "说明"
   },
   "dialog": {
     "select_save": "选择存档文件",
@@ -94,6 +89,7 @@
     "cts_save": "细胞存档",
     "all_files": "所有文件",
     "path_title": "路径",
+    "open_failed_title": "打开失败",
     "file_not_found_title": "未找到文件",
     "hint_title": "提示",
     "invalid_value_title": "无效值",
@@ -105,7 +101,6 @@
   },
   "message": {
     "waiting_load": "等待加载存档",
-    "waiting_ready": "等待载入",
     "loading": "正在加载存档，请稍候...",
     "loaded": "存档已加载，可以直接筛选和编辑。",
     "load_failed": "存档加载失败。",
