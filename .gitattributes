@@ -3,3 +3,4 @@
 *.ico binary
 *.icns binary
 *.bin binary
+src/data/game-*.txt -text

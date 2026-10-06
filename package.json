@@ -1,17 +1,14 @@
 {
   "name": "cts-save-editor",
-  "version": "0.3.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
     "tauri": "tauri",
     "check": "tsc --noEmit",
     "format": "prettier --write . && cargo fmt --all",
-    "format:check": "prettier --check . && cargo fmt --all -- --check",
-    "lint": "oxlint --deny-warnings src vite.config.ts && biome lint src/style.css --error-on-warnings",
     "lint:fix": "oxlint --fix --deny-warnings src vite.config.ts && biome lint src/style.css --write --error-on-warnings"
   },
   "dependencies": {

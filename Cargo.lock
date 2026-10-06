@@ -675,7 +675,7 @@ checksum = "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
 
 [[package]]
 name = "cts-save-core"
-version = "0.3.0"
+version = "2.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -684,7 +684,7 @@ dependencies = [
 
 [[package]]
 name = "cts-save-editor"
-version = "0.3.0"
+version = "2.0.0"
 dependencies = [
  "cts-save-core",
  "dirs",

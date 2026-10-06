@@ -8,15 +8,11 @@
     "header_subtitle": "查看和编辑游戏存档"
   },
   "section": {
-    "all": "全部",
-    "customVars": "字符串变量",
-    "metaVars": "数值变量"
+    "all": "全部"
   },
   "common": {
     "dash": "-",
     "empty_file": "未载入文件",
-    "unselected": "未选择",
-    "no_category_note": "选择一条记录后可查看说明",
     "no_category_note_short": "暂无说明",
     "items_count": "{shown} / {total} 项",
     "ready": "READY",
@@ -38,18 +34,14 @@
     "current_file": "当前存档",
     "status": "状态",
     "total_items": "项目总数",
-    "string_items": "字符串",
-    "numeric_items": "数值",
     "visible_items": "当前可见"
   },
   "filters": {
     "title": "筛选",
     "hint": "搜索变量、值、分类或说明",
-    "source": "来源",
     "category": "分类",
     "search": "搜索",
     "overview": "变量总览",
-    "column_source": "来源",
     "column_category": "分类",
     "column_key": "变量名",
     "column_value": "值",
@@ -59,13 +51,8 @@
     "title": "变量",
     "subtitle": "查看和修改变量",
     "key": "变量名",
-    "source": "来源",
     "category": "分类",
     "original_value": "原始值",
-    "value_type": "值类型",
-    "value_type_text": "文本",
-    "value_type_number": "数值",
-    "value_type_boolean": "布尔",
     "new_value": "新值",
     "category_note": "说明"
   },
@@ -155,7 +142,7 @@
     "bank_b": "想法",
     "bank_c": "达尔文",
     "bank_d": "元比特",
-    "bank_e": "催化剂",
+    "bank_e": "诱变剂",
     "bank_f": "化石",
     "bank_g": "知识",
     "beyond_bank_stardust": "星尘",
@@ -208,7 +195,7 @@
     "willCreate": "待创建",
     "automaticBackup": "自动备份",
     "allVariables": "全部",
-    "searchPlaceholder": "搜索变量、值或说明",
+    "searchPlaceholder": "搜索游戏名称、变量或值",
     "changes": "已修改",
     "noResults": "未找到变量",
     "tryAnotherFilter": "换个关键词，或清除筛选再试。",
@@ -238,6 +225,8 @@
     "restoreOriginal": "恢复保存时的值",
     "restored": "已恢复原值",
     "undoDone": "已撤销修改",
-    "redoDone": "已重做修改"
+    "redoDone": "已重做修改",
+    "columnName": "名称 / 变量",
+    "namesUnavailable": "游戏语言文件加载失败，暂时显示变量名。"
   }
 }

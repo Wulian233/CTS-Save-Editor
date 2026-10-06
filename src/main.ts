@@ -1,9 +1,11 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import appConfig from '../src-tauri/tauri.conf.json';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open, save, confirm } from '@tauri-apps/plugin-dialog';
 import { revealItemInDir, openUrl } from '@tauri-apps/plugin-opener';
 import { t, getLocale, setLocale } from './i18n';
 import { icon } from './icons';
+import { gameName, primaryName, alternateName, loadGameNames } from './game-names';
 import { getTheme, setTheme, type Theme } from './theme';
 import type { View, Location, Entry, Update } from './types';
 import './style.css';
@@ -14,7 +16,6 @@ let locations: Location[] = [];
 let page: 'home' | 'editor' = 'home';
 let busy = false;
 let query = '';
-let source = 'all';
 let category = 'all';
 let changedOnly = false;
 let selectedId: number | null = null;
@@ -46,11 +47,8 @@ function readRecents(): string[] {
 function size(bytes: number) {
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
-function section(entry: Entry) {
-  return t(entry.section === 'custom' ? 'section.customVars' : 'section.metaVars');
-}
 function note(entry: Entry) {
-  return t(entry.description || entry.note);
+  return primaryName(entry.key) ?? t(entry.description || entry.note);
 }
 function changed(entry: Entry) {
   return changedIds.has(entry.id);
@@ -63,7 +61,7 @@ function acceptView(next: View) {
   changedIds = new Set(next.changedIds);
 }
 function button(id: string, name: string, image: string, cls = '', disabled = false) {
-  return `<button id="${id}" class="button ${cls}" ${disabled ? 'disabled' : ''}>${icon(image)}<span>${escape(t(name))}</span></button>`;
+  return `<button id="${id}" title="${escape(t(name))}" aria-label="${escape(t(name))}" class="button ${cls}" ${disabled ? 'disabled' : ''}>${icon(image)}<span>${escape(t(name))}</span></button>`;
 }
 function toast(message: string, error = false) {
   clearTimeout(toastTimer);
@@ -108,7 +106,6 @@ async function load(path: string) {
     acceptView(loaded);
     reviewing = false;
     query = '';
-    source = 'all';
     category = 'all';
     changedOnly = false;
     pageIndex = 0;
@@ -149,7 +146,7 @@ function render() {
   root.innerHTML = `<div class="app-shell">
     <aside class="rail"><a class="brand" href="#" id="brand" aria-label="CTS Save Editor">${icon('atom')}<span>CTS<span class="brand-small">SAVE EDITOR</span></span></a>
       <nav aria-label="${escape(t('new.navigation'))}"><button id="nav-home" class="nav-item ${page === 'home' ? 'active' : ''}">${icon('folder')}<span>${escape(t('new.saves'))}</span></button><button id="nav-editor" class="nav-item ${page === 'editor' ? 'active' : ''}" ${!view ? 'disabled' : ''}>${icon('edit')}<span>${escape(t('new.workspace'))}</span>${view?.dirty ? '<i class="dirty-dot"></i>' : ''}</button></nav>
-      <div class="rail-bottom"><div class="theme-switch" role="group" aria-label="${escape(t('new.theme'))}">${(['light', 'dark', 'system'] as const).map((theme) => `<button data-theme="${theme}" class="${getTheme() === theme ? 'active' : ''}" title="${escape(t(`new.theme_${theme}`))}" aria-label="${escape(t(`new.theme_${theme}`))}" aria-pressed="${getTheme() === theme}">${icon(theme)}</button>`).join('')}</div><span class="version">v0.3.0</span><button class="language" id="language" aria-label="${getLocale() === 'zh-CN' ? 'Switch to English' : '切换到简体中文'}">${icon('globe')}<span>${getLocale() === 'zh-CN' ? 'English' : '简体中文'}</span></button></div>
+      <div class="rail-bottom"><div class="theme-switch" role="group" aria-label="${escape(t('new.theme'))}">${(['light', 'dark', 'system'] as const).map((theme) => `<button data-theme="${theme}" class="${getTheme() === theme ? 'active' : ''}" title="${escape(t(`new.theme_${theme}`))}" aria-label="${escape(t(`new.theme_${theme}`))}" aria-pressed="${getTheme() === theme}">${icon(theme)}</button>`).join('')}</div><span class="version">v${escape(appConfig.version)}</span><button class="language" id="language" aria-label="${getLocale() === 'zh-CN' ? 'Switch to English' : '切换到简体中文'}">${icon('globe')}<span>${getLocale() === 'zh-CN' ? 'English' : '简体中文'}</span></button></div>
     </aside>
     <main><header class="topbar"><span class="breadcrumb">Cell to Singularity <span>/</span> ${escape(t(page === 'home' ? 'new.saves' : 'new.workspace'))}</span><span class="local-badge"><i></i>${escape(t('new.localOnly'))}</span></header>
       <div id="content">${page === 'home' ? home() : workspace()}</div>
@@ -262,7 +259,6 @@ function workspace() {
   if (!view) return '';
   const counts = new Map<string, number>();
   view.entries.forEach((e) => counts.set(e.category, (counts.get(e.category) ?? 0) + 1));
-  const custom = view.entries.filter((e) => e.section === 'custom').length;
   const changes = view.entries.filter(changed).length;
   return `<section class="editor-page"><div class="editor-heading"><div><p class="eyebrow">${escape(t('new.saveWorkspace'))}</p><h1>${escape(basename(view.path))}<span class="badge ${view.dirty ? 'pending' : 'ready'}">${escape(t(view.dirty ? 'new.unsaved' : 'new.saved'))}</span></h1><button id="reveal-current" class="path path-button" title="${escape(view.path)}">${escape(directory(view.path))}${icon('folder')}</button></div><div class="editor-actions">${button('undo', 'new.undo', 'undo', '', !view.canUndo)}${button('redo', 'new.redo', 'redo', '', !view.canRedo)}${button('backup', 'buttons.backup', 'shield')}${button('reload', 'buttons.reload', 'refresh')}${button('save-as', 'buttons.save_as', 'download')}${button('save', view.files.length > 1 ? 'new.saveBoth' : 'buttons.save_in_place', 'save', 'primary')}</div></div>
     <div class="save-strip"><span>${icon('file')}${view.files.map((f) => `<span class="paired-name">${escape(f.name)}${!f.exists ? `<small>${escape(t('new.willCreate'))}</small>` : ''}</span>`).join('<span class="pair-plus">+</span>')}</span><span>${icon('shield')}${escape(t('new.automaticBackup'))}</span></div>
@@ -274,10 +270,18 @@ function workspace() {
         ([c, count]) =>
           `<button class="category-button ${category === c ? 'active' : ''}" data-category="${escape(c)}"><span>${escape(t(c))}</span><span>${count}</span></button>`,
       )
-      .join(
-        '',
-      )}<div class="category-footer"><span>${custom} ${escape(t('dashboard.string_items'))}</span><span>${view.entries.length - custom} ${escape(t('dashboard.numeric_items'))}</span></div></aside>
-      <section class="variables"><div class="filter-bar"><label class="search-field">${icon('search')}<input id="search" value="${escape(query)}" placeholder="${escape(t('new.searchPlaceholder'))}" aria-label="${escape(t('filters.search'))}"><kbd>${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} F</kbd></label><button id="clear-filters" class="icon-button" title="${escape(t('buttons.clear_filter'))}" aria-label="${escape(t('buttons.clear_filter'))}">${icon('close')}</button></div><div class="table-toolbar"><div class="source-tabs" role="group" aria-label="${escape(t('filters.source'))}">${['all', 'custom', 'meta'].map((s) => `<button data-section="${s}" class="${source === s ? 'active' : ''}">${escape(t(s === 'all' ? 'section.all' : s === 'custom' ? 'section.customVars' : 'section.metaVars'))}</button>`).join('')}</div><label class="changes-toggle"><input id="changes-only" type="checkbox" ${changedOnly ? 'checked' : ''}>${escape(t('new.changes'))}<span id="changes-count">${changes}</span></label></div><div class="table-scroll"><table><thead><tr><th>${escape(t('filters.column_key'))}</th><th>${escape(t('filters.column_source'))}</th><th>${escape(t('filters.column_value'))}</th></tr></thead><tbody id="rows"></tbody></table><div id="empty-filter" class="empty-filter" hidden>${icon('search')}<h3>${escape(t('new.noResults'))}</h3><p>${escape(t('new.tryAnotherFilter'))}</p></div></div><footer class="table-footer"><span id="item-count"></span><div><button id="previous-page" class="icon-button" aria-label="${escape(t('new.previous'))}">${icon('back')}</button><span id="page-count"></span><button id="next-page" class="icon-button" aria-label="${escape(t('new.next'))}">${icon('arrow')}</button></div></footer></section>
+      .join('')}</aside>
+      <section class="variables"><div class="filter-bar"><label class="search-field">${icon('search')}<input id="search" value="${escape(query)}" placeholder="${escape(t('new.searchPlaceholder'))}" aria-label="${escape(t('filters.search'))}"><kbd>${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} F</kbd></label><button id="clear-filters" class="icon-button" title="${escape(t('buttons.clear_filter'))}" aria-label="${escape(t('buttons.clear_filter'))}">${icon('close')}</button></div><div class="compact-category"><label for="category-select">${escape(t('filters.category'))}</label><select id="category-select"><option value="all">${escape(t('new.allVariables'))}</option>${Array.from(
+        counts.keys(),
+      )
+        .sort((a, b) => t(a).localeCompare(t(b)))
+        .map(
+          (c) =>
+            `<option value="${escape(c)}" ${category === c ? 'selected' : ''}>${escape(t(c))}</option>`,
+        )
+        .join(
+          '',
+        )}</select></div><div class="table-toolbar"><label class="changes-toggle"><input id="changes-only" type="checkbox" ${changedOnly ? 'checked' : ''}>${escape(t('new.changes'))}<span id="changes-count">${changes}</span></label></div><div class="table-scroll"><table><thead><tr><th>${escape(t('new.columnName'))}</th><th colspan="2">${escape(t('filters.column_value'))}</th></tr></thead><tbody id="rows"></tbody></table><div id="empty-filter" class="empty-filter" hidden>${icon('search')}<h3>${escape(t('new.noResults'))}</h3><p>${escape(t('new.tryAnotherFilter'))}</p></div></div><footer class="table-footer"><span id="item-count"></span><div><button id="previous-page" class="icon-button" aria-label="${escape(t('new.previous'))}">${icon('back')}</button><span id="page-count"></span><button id="next-page" class="icon-button" aria-label="${escape(t('new.next'))}">${icon('arrow')}</button></div></footer></section>
       <aside id="inspector" class="inspector"></aside>
     </div><div class="workspace-footer">${button('review-changes', 'new.reviewChanges', 'changes', '', changes === 0)}<span>${icon('info')}${escape(t('new.editHint'))}</span><button class="text-button" id="show-backup" ${!lastBackup ? 'disabled' : ''}>${escape(t('new.showBackup'))}${icon('arrow')}</button></div>
   </section>`;
@@ -287,11 +291,10 @@ function filtered() {
   return (
     view?.entries.filter(
       (e) =>
-        (source === 'all' || e.section === source) &&
         (category === 'all' || e.category === category) &&
         (!changedOnly || changed(e)) &&
         (!q ||
-          [e.section, section(e), e.key, e.value, t(e.category), note(e)]
+          [e.key, e.value, t(e.category), note(e), alternateName(e.key) ?? '']
             .join('\n')
             .toLocaleLowerCase()
             .includes(q)),
@@ -308,7 +311,7 @@ function renderRows() {
   document.querySelector('#rows')!.innerHTML = visible
     .map(
       (e) =>
-        `<tr tabindex="0" data-id="${e.id}" class="${selectedId === e.id ? 'selected' : ''} ${changed(e) ? 'changed' : ''}" aria-selected="${selectedId === e.id}"><td><strong class="variable-key" title="${escape(e.key)}">${escape(e.key)}</strong><small class="variable-note" title="${escape(note(e))}">${escape(t(e.category))} <span class="variable-separator">·</span> ${escape(note(e))}</small></td><td><span class="type-tag ${e.section}">${escape(section(e))}</span></td><td class="value-cell" title="${escape(e.value)}">${changed(e) ? '<i class="dirty-dot"></i>' : ''}${escape(e.value)}</td></tr>`,
+        `<tr tabindex="0" data-id="${e.id}" class="${selectedId === e.id ? 'selected' : ''} ${changed(e) ? 'changed' : ''}" aria-selected="${selectedId === e.id}"><td><strong class="variable-name" title="${escape(note(e))}">${escape(primaryName(e.key) ?? e.key)}</strong>${gameName(e.key) ? `<small class="variable-alternate" title="${escape(alternateName(e.key) ?? '')}">${escape(alternateName(e.key) ?? '')}</small><small class="variable-key" title="${escape(e.key)}">${escape(e.key)}</small>` : `<small class="variable-note" title="${escape(note(e))}">${escape(note(e))}</small>`}</td><td class="value-cell" title="${escape(e.value)}">${changed(e) ? '<i class="dirty-dot"></i>' : ''}${escape(e.value)}</td></tr>`,
     )
     .join('');
   document.querySelector<HTMLElement>('#empty-filter')!.hidden = entries.length > 0;
@@ -360,11 +363,12 @@ function renderInspector() {
   const entry = view!.entries.find((e) => e.id === selectedId);
   const inspector = document.querySelector('#inspector')!;
   if (!entry) {
-    inspector.innerHTML = `<div class="inspector-empty">${icon('edit')}<h3>${escape(t('common.unselected'))}</h3><p>${escape(t('common.no_category_note'))}</p></div>`;
+    inspector.innerHTML = '';
     return;
   }
   const mode = editorMode(entry);
-  inspector.innerHTML = `<div class="inspector-top"><span class="eyebrow">${escape(t('inspector.title'))}</span>${icon('edit')}</div><h2>${escape(note(entry) || entry.key)}</h2><code class="inspector-key">${escape(entry.key)}</code><div class="inspector-tags"><span class="type-tag ${entry.section}">${escape(section(entry))}</span><span class="badge">${escape(t(`inspector.value_type_${mode}`))}</span></div><dl><dt>${escape(t('inspector.category'))}</dt><dd>${escape(t(entry.category))}</dd><dt>${escape(t('new.currentValue'))}</dt><dd class="mono current-value">${escape(entry.value)}</dd>${changed(entry) ? `<dt>${escape(t('inspector.original_value'))}</dt><dd class="mono">${escape(originals.get(entry.id)!)} </dd>` : ''}</dl><form id="edit-form"><label for="edit-value">${escape(t('inspector.new_value'))}</label>${mode === 'boolean' ? `<select id="edit-value"><option ${entry.value === 'True' ? 'selected' : ''}>True</option><option ${entry.value === 'False' ? 'selected' : ''}>False</option></select>` : `<textarea id="edit-value" rows="${mode === 'text' ? 4 : 2}" spellcheck="false" ${mode === 'number' ? 'inputmode="decimal"' : ''}>${escape(entry.value)}</textarea>`}<p class="input-hint">${escape(t(mode === 'number' ? 'new.numberHint' : mode === 'boolean' ? 'new.booleanHint' : 'new.textHint'))}</p><button class="button primary apply-button" type="submit">${icon('check')}${escape(t('buttons.apply_change'))}</button><button id="restore" class="text-button" type="button">${icon('refresh')}${escape(t('buttons.restore_value'))}</button>${changed(entry) ? `<button id="restore-original" class="text-button" type="button">${icon('undo')}${escape(t('new.restoreOriginal'))}</button>` : ''}<p id="edit-error" class="inline-error" role="alert"></p></form><div class="note-box"><h3>${escape(t('inspector.category_note'))}</h3><p>${escape(note(entry))}</p></div>`;
+  const name = gameName(entry.key);
+  inspector.innerHTML = `<div class="inspector-top"><span class="eyebrow">${escape(t('inspector.title'))}</span>${icon('edit')}</div><h2>${escape(note(entry) || entry.key)}</h2><code class="inspector-key">${escape(entry.key)}</code>${name ? `<div class="bilingual-name"><div><span>中文</span><p lang="zh-CN">${escape(name.zh)}</p></div><div><span>English</span><p lang="en">${escape(name.en)}</p></div></div>` : ''}<dl><dt>${escape(t('inspector.category'))}</dt><dd>${escape(t(entry.category))}</dd><dt>${escape(t('new.currentValue'))}</dt><dd class="mono current-value">${escape(entry.value)}</dd>${changed(entry) ? `<dt>${escape(t('inspector.original_value'))}</dt><dd class="mono">${escape(originals.get(entry.id)!)} </dd>` : ''}</dl><form id="edit-form"><label for="edit-value">${escape(t('inspector.new_value'))}</label>${mode === 'boolean' ? `<select id="edit-value"><option ${entry.value === 'True' ? 'selected' : ''}>True</option><option ${entry.value === 'False' ? 'selected' : ''}>False</option></select>` : `<textarea id="edit-value" rows="${mode === 'text' ? 4 : 2}" spellcheck="false" ${mode === 'number' ? 'inputmode="decimal"' : ''}>${escape(entry.value)}</textarea>`}<p class="input-hint">${escape(t(mode === 'number' ? 'new.numberHint' : mode === 'boolean' ? 'new.booleanHint' : 'new.textHint'))}</p><button class="button primary apply-button" type="submit">${icon('check')}${escape(t('buttons.apply_change'))}</button><button id="restore" class="text-button" type="button">${icon('refresh')}${escape(t('buttons.restore_value'))}</button>${changed(entry) ? `<button id="restore-original" class="text-button" type="button">${icon('undo')}${escape(t('new.restoreOriginal'))}</button>` : ''}<p id="edit-error" class="inline-error" role="alert"></p></form><div class="note-box"><h3>${escape(t('inspector.category_note'))}</h3><p>${escape(t(entry.note))}</p></div>`;
   bind('restore-original', () =>
     action(async () => {
       acceptView(await invoke<View>('restore_entry', { id: entry.id }));
@@ -446,6 +450,14 @@ async function history(redo = false) {
   });
 }
 function bindWorkspace() {
+  document.querySelector<HTMLSelectElement>('#category-select')!.onchange = (e) => {
+    category = (e.target as HTMLSelectElement).value;
+    pageIndex = 0;
+    renderRows();
+    document
+      .querySelectorAll<HTMLElement>('[data-category]')
+      .forEach((el) => el.classList.toggle('active', el.dataset.category === category));
+  };
   bind('undo', () => history());
   bind('redo', () => history(true));
   bind('review-changes', () => {
@@ -461,20 +473,10 @@ function bindWorkspace() {
     (b) =>
       (b.onclick = () => {
         category = b.dataset.category!;
+        document.querySelector<HTMLSelectElement>('#category-select')!.value = category;
         pageIndex = 0;
         document
           .querySelectorAll('[data-category]')
-          .forEach((el) => el.classList.toggle('active', el === b));
-        renderRows();
-      }),
-  );
-  document.querySelectorAll<HTMLButtonElement>('[data-section]').forEach(
-    (b) =>
-      (b.onclick = () => {
-        source = b.dataset.section!;
-        pageIndex = 0;
-        document
-          .querySelectorAll('[data-section]')
           .forEach((el) => el.classList.toggle('active', el === b));
         renderRows();
       }),
@@ -486,7 +488,6 @@ function bindWorkspace() {
   };
   bind('clear-filters', () => {
     query = '';
-    source = 'all';
     category = 'all';
     changedOnly = false;
     pageIndex = 0;
@@ -529,7 +530,7 @@ function renderReview() {
     return;
   }
   const entries = view.entries.filter(changed);
-  slot.innerHTML = `<div class="modal-backdrop"><section class="changes-modal" role="dialog" aria-modal="true" aria-labelledby="changes-title"><div class="section-heading"><h2 id="changes-title">${escape(t('new.reviewChanges'))} · ${entries.length}</h2><button id="close-review" class="icon-button" aria-label="${escape(t('new.dismiss'))}">${icon('close')}</button></div><div class="review-list">${entries.map((e) => `<article class="review-item"><strong>${escape(e.key)}</strong><small>${escape(note(e))}</small><dl><dt>${escape(t('inspector.original_value'))}</dt><dd>${escape(originals.get(e.id) ?? '')}</dd><dt>${escape(t('new.currentValue'))}</dt><dd>${escape(e.value)}</dd></dl></article>`).join('')}</div><div class="review-actions">${button('review-back', 'new.keepEditing', 'back')}${button('review-save', view.files.length > 1 ? 'new.saveBoth' : 'buttons.save_in_place', 'save', 'primary', !view.dirty)}</div></section></div>`;
+  slot.innerHTML = `<div class="modal-backdrop"><section class="changes-modal" role="dialog" aria-modal="true" aria-labelledby="changes-title"><div class="section-heading"><h2 id="changes-title">${escape(t('new.reviewChanges'))} · ${entries.length}</h2><button id="close-review" class="icon-button" aria-label="${escape(t('new.dismiss'))}">${icon('close')}</button></div><div class="review-list">${entries.map((e) => `<article class="review-item"><strong>${escape(note(e))}</strong><small>${escape(e.key)}${alternateName(e.key) ? ` · ${escape(alternateName(e.key)!)} ` : ''}</small><dl><dt>${escape(t('inspector.original_value'))}</dt><dd>${escape(originals.get(e.id) ?? '')}</dd><dt>${escape(t('new.currentValue'))}</dt><dd>${escape(e.value)}</dd></dl></article>`).join('')}</div><div class="review-actions">${button('review-back', 'new.keepEditing', 'back')}${button('review-save', view.files.length > 1 ? 'new.saveBoth' : 'buttons.save_in_place', 'save', 'primary', !view.dirty)}</div></section></div>`;
   const close = () => {
     reviewing = false;
     renderReview();
@@ -618,7 +619,15 @@ window.addEventListener('beforeunload', (e) => {
     e.returnValue = '';
   }
 });
+let nameLoadError = false;
+try {
+  await loadGameNames();
+} catch (error) {
+  console.error(error);
+  nameLoadError = true;
+}
 render();
+if (nameLoadError) toast(t('new.namesUnavailable'), true);
 if (isTauri()) {
   void invoke<Location[]>('discover_saves')
     .then((data) => {

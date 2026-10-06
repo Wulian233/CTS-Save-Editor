@@ -8,15 +8,11 @@
     "header_subtitle": "View and edit game saves"
   },
   "section": {
-    "all": "All",
-    "customVars": "String Vars",
-    "metaVars": "Numeric Vars"
+    "all": "All"
   },
   "common": {
     "dash": "-",
     "empty_file": "No file loaded",
-    "unselected": "Nothing selected",
-    "no_category_note": "Select a row to inspect its note.",
     "no_category_note_short": "No note.",
     "items_count": "{shown} / {total} items",
     "ready": "READY",
@@ -38,18 +34,14 @@
     "current_file": "Current Save",
     "status": "Status",
     "total_items": "Total Items",
-    "string_items": "Strings",
-    "numeric_items": "Numbers",
     "visible_items": "Visible"
   },
   "filters": {
     "title": "Filters",
     "hint": "Search by key, value, category, or note.",
-    "source": "Source",
     "category": "Category",
     "search": "Search",
     "overview": "Variable Overview",
-    "column_source": "Source",
     "column_category": "Category",
     "column_key": "Key",
     "column_value": "Value",
@@ -59,13 +51,8 @@
     "title": "Variable",
     "subtitle": "View and edit a variable",
     "key": "Key",
-    "source": "Source",
     "category": "Category",
     "original_value": "Original Value",
-    "value_type": "Value Type",
-    "value_type_text": "Text",
-    "value_type_number": "Number",
-    "value_type_boolean": "Boolean",
     "new_value": "New Value",
     "category_note": "Note"
   },
@@ -152,12 +139,12 @@
   },
   "item_note": {
     "bank": "Entropy",
-    "bank_b": "Ideas",
+    "bank_b": "idea",
     "bank_c": "Darwinium",
-    "bank_d": "Metabits",
+    "bank_d": "Metabit",
     "bank_e": "Mutagen",
     "bank_f": "Fossils",
-    "bank_g": "Knowledges",
+    "bank_g": "Knowledge",
     "beyond_bank_stardust": "Stardust",
     "beyond_bank_dark": "Dark Matter",
     "effect_game_speed": "Simulation Speed",
@@ -208,7 +195,7 @@
     "willCreate": "Will be created",
     "automaticBackup": "Auto backup",
     "allVariables": "All variables",
-    "searchPlaceholder": "Search variables, values or notes",
+    "searchPlaceholder": "Search game names, variables or values",
     "changes": "Changed",
     "noResults": "No variables found",
     "tryAnotherFilter": "Try another search or clear the filters.",
@@ -238,6 +225,8 @@
     "restoreOriginal": "Restore saved value",
     "restored": "Saved value restored",
     "undoDone": "Change undone",
-    "redoDone": "Change redone"
+    "redoDone": "Change redone",
+    "columnName": "Name / variable",
+    "namesUnavailable": "Game language files could not be loaded. Variable keys are shown instead."
   }
 }
