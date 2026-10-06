@@ -24,8 +24,7 @@
     }
   },
   "bundle": {
-    "active": true,
-    "targets": ["nsis"],
+    "active": false,
     "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"],
     "shortDescription": "Cell to Singularity save editor",
     "category": "Utility"

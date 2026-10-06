@@ -201,7 +201,7 @@ function home() {
         : `<p class="empty-recent">${escape(t('new.noRecent'))}</p>`
     }</section><aside class="save-tip">${icon('shield')}<h3>${escape(t('new.pairTitle'))}</h3><p>${escape(t('new.pairTip'))}</p><span>${escape(t('new.backupTip'))}</span></aside></div>
     <details class="manual-path"><summary>${escape(t('new.manualPath'))}</summary><form id="path-form"><input id="path-input" aria-label="${escape(t('new.pathLabel'))}" placeholder="${escape(t('new.pathPlaceholder'))}" required><button class="button" type="submit">${escape(t('buttons.open'))}${icon('arrow')}</button></form></details>
-    <label class="autoload-setting"><input id="autoload" type="checkbox" ${localStorage.getItem('cts.autoload') === 'true' ? 'checked' : ''}>${escape(t('new.autoload'))}</label>
+    <label class="autoload-setting"><input id="autoload" type="checkbox" ${localStorage.getItem('cts.autoload') !== 'false' ? 'checked' : ''}>${escape(t('new.autoload'))}</label>
     ${view ? `<button id="resume" class="button resume">${icon('back')}${escape(t('new.resume'))} · ${escape(basename(view.path))}</button>` : ''}
   </section>`;
 }
@@ -633,7 +633,7 @@ if (isTauri()) {
     .then((data) => {
       locations = data;
       if (page === 'home') render();
-      if (localStorage.getItem('cts.autoload') === 'true') {
+      if (localStorage.getItem('cts.autoload') !== 'false') {
         const location = data.find((l) => l.files.some((f) => f.exists));
         if (location) void load(location.path);
       }

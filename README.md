@@ -48,11 +48,11 @@ npm run tauri build
 
 | Platform            | Build output                                                         |
 | ------------------- | -------------------------------------------------------------------- |
-| Windows x64         | `.exe` installer; executable in `target/release/cts-save-editor.exe` |
+| Windows x64         | Portable executable: `target/release/cts-save-editor.exe`           |
 | Linux x64           | Executable in `target/release/cts-save-editor`                       |
 | macOS Apple Silicon | `.app` and `.dmg`                                                    |
 
-The GitHub Actions workflow builds all three platforms on push, pull request or manual dispatch and uploads the artifacts. Linux's artifact contains only the executable in a `.tar.gz` to preserve permissions; it needs the system GTK/WebKitGTK libraries. No `.msi`, `.deb`, `.rpm` or AppImage is built. The macOS application is also archived to preserve its executable permissions. Code signing and macOS notarization are not configured.
+The GitHub Actions workflow builds all three platforms on push, pull request or manual dispatch and uploads the artifacts. Windows uploads the portable `.exe` directly without an installer. Linux's artifact contains only the executable in a `.tar.gz` to preserve permissions; it needs the system GTK/WebKitGTK libraries. No Windows installer, `.msi`, `.deb`, `.rpm` or AppImage is built. The macOS application is also archived to preserve its executable permissions. Code signing and macOS notarization are not configured.
 
 Dependencies are locked in `package-lock.json` and `Cargo.lock`. Dependabot checks npm, Cargo and Actions weekly.
 
