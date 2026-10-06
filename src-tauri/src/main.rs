@@ -38,7 +38,6 @@ struct View {
     entries: Vec<Entry>,
     files: Vec<FileInfo>,
     dirty: bool,
-    diverged: bool,
     can_undo: bool,
     can_redo: bool,
     changed_ids: Vec<usize>,
@@ -76,17 +75,11 @@ impl Session {
                     .then_some(entry.id)
             })
             .collect();
-        let present: Vec<_> = self
-            .snapshot
-            .iter()
-            .filter_map(|(_, b)| b.as_ref())
-            .collect();
         View {
             path: self.source.to_string_lossy().into(),
             entries,
             files: self.snapshot.iter().map(|(p, _)| file_info(p)).collect(),
             dirty: self.editor.data != self.baseline,
-            diverged: present.windows(2).any(|v| v[0] != v[1]),
             can_undo: self.editor.can_undo(),
             can_redo: self.editor.can_redo(),
             changed_ids,
@@ -277,23 +270,48 @@ async fn save_session(path: Option<String>, app: tauri::AppHandle) -> Result<Sav
         let source = path
             .map(PathBuf::from)
             .unwrap_or_else(|| session.source.clone());
+        let source = if source.exists() {
+            dunce::canonicalize(source).map_err(|e| e.to_string())?
+        } else {
+            source
+        };
         let targets = files::targets(&source);
-        let original = if targets
+        let same_targets = targets
             == session
                 .snapshot
                 .iter()
                 .map(|(p, _)| p.clone())
-                .collect::<Vec<_>>()
-        {
+                .collect::<Vec<_>>();
+        let original = if same_targets {
             session.snapshot.clone()
         } else {
             files::snapshot(&targets)?
         };
-        let backup = files::save(&original, &session.editor.data, &backup_root()?)?;
+        let contents = original
+            .iter()
+            .map(|(path, data)| {
+                if (!same_targets || path != &session.source)
+                    && let Some(data) = data
+                {
+                    return session
+                        .editor
+                        .apply_changes_to(&session.baseline, data)
+                        .map_err(|e| format!("{}: {e}", path.display()));
+                }
+                Ok(session.editor.data.clone())
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let backup = files::save(&original, &contents, &backup_root()?)?;
+        if let Some(index) = targets.iter().position(|path| path == &source)
+            && contents[index] != session.editor.data
+        {
+            session.editor = Editor::new(contents[index].clone());
+        }
         session.source = source;
         session.snapshot = original
             .into_iter()
-            .map(|(p, _)| (p, Some(session.editor.data.clone())))
+            .zip(contents)
+            .map(|((p, _), data)| (p, Some(data)))
             .collect();
         session.baseline = session.editor.data.clone();
         session.baseline_entries = session.editor.parse();

@@ -19,7 +19,6 @@ export interface View {
   entries: Entry[];
   files: SaveFile[];
   dirty: boolean;
-  diverged: boolean;
   canUndo: boolean;
   canRedo: boolean;
   changedIds: number[];

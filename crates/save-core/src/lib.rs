@@ -4,7 +4,10 @@ pub mod files;
 pub mod numbers;
 
 use serde::Serialize;
-use std::ops::Range;
+use std::{
+    collections::{BTreeMap, HashMap},
+    ops::Range,
+};
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,6 +90,60 @@ impl Editor {
 
     pub fn restore(&mut self, entry: &Entry, original: &[u8]) {
         self.replace(entry.start..entry.end, original.to_vec());
+    }
+
+    pub fn apply_changes_to(&self, baseline: &[u8], target: &[u8]) -> Result<Vec<u8>, String> {
+        let before = binary::parse(baseline);
+        let after = self.parse();
+        if before.len() != after.len()
+            || before
+                .iter()
+                .zip(&after)
+                .any(|(a, b)| a.section != b.section || a.key != b.key)
+        {
+            return Err("Save structure changed. Reload the original save before editing.".into());
+        }
+        let target_entries = binary::parse(target);
+        let mut groups = HashMap::<(&str, &str), Vec<&Entry>>::new();
+        for entry in &target_entries {
+            groups
+                .entry((&entry.section, &entry.key))
+                .or_default()
+                .push(entry);
+        }
+        let mut counts = HashMap::<(&str, &str), usize>::new();
+        for entry in &before {
+            *counts.entry((&entry.section, &entry.key)).or_default() += 1;
+        }
+        let mut occurrences = HashMap::<(&str, &str), usize>::new();
+        let mut patches = BTreeMap::new();
+        for (original, current) in before.iter().zip(&after) {
+            let key = (original.section.as_str(), original.key.as_str());
+            let occurrence = occurrences.entry(key).or_default();
+            let index = *occurrence;
+            *occurrence += 1;
+            let payload = &self.data[current.start..current.end];
+            if payload == &baseline[original.start..original.end] {
+                continue;
+            }
+            let matches = groups
+                .get(&key)
+                .filter(|entries| entries.len() == counts[&key])
+                .ok_or_else(|| {
+                    format!(
+                        "Cannot match modified variable in companion save: {}",
+                        original.key
+                    )
+                })?;
+            let entry = matches[index];
+            patches.insert(entry.start, (entry.end, payload));
+        }
+        // Write from the end so changed UTF-8 lengths never invalidate later offsets.
+        let mut result = target.to_vec();
+        for (start, (end, payload)) in patches.into_iter().rev() {
+            result.splice(start..end, payload.iter().copied());
+        }
+        Ok(result)
     }
 
     pub fn can_undo(&self) -> bool {

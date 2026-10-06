@@ -99,7 +99,14 @@ fn stage(path: &Path, data: &[u8]) -> Result<NamedTempFile, String> {
     Ok(temp)
 }
 
-pub fn save(original: &Snapshot, data: &[u8], backup_root: &Path) -> Result<PathBuf, String> {
+pub fn save(
+    original: &Snapshot,
+    contents: &[Vec<u8>],
+    backup_root: &Path,
+) -> Result<PathBuf, String> {
+    if original.len() != contents.len() {
+        return Err("Save file count does not match output count".into());
+    }
     let paths: Vec<_> = original.iter().map(|(p, _)| p.clone()).collect();
     if &snapshot(&paths)? != original {
         return Err(
@@ -108,7 +115,7 @@ pub fn save(original: &Snapshot, data: &[u8], backup_root: &Path) -> Result<Path
         );
     }
     let mut staged = Vec::new();
-    for (path, _) in original {
+    for ((path, _), data) in original.iter().zip(contents) {
         staged.push(stage(path, data)?);
     }
     let backup_path = backup(original, backup_root)?;

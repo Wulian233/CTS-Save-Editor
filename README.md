@@ -14,7 +14,8 @@ Undo and redo are available for applied edits. Restore a variable to its last sa
 
 - Opening a folder reads `savedGames2.gd` first, falling back to `savedGames.gd`. You can choose either file explicitly.
 - Saving either standard file updates **both** `savedGames.gd` and `savedGames2.gd`. A missing companion is created. The `savegame.gd` / `savegame2.gd` and `savegame` / `savegame2.gd` aliases are also recognized.
-- If the files differ, the editor shows which file was read. Each original is backed up before both are replaced with the edited version.
+- Each original is backed up first. Edited variables are matched by name, type and occurrence in each file. Unedited variables and all other bytes stay specific to each save.
+- Missing modified variables or different counts of duplicate names stop saving with the variable name. A missing companion file is created from the edited save. Save As patches existing destinations and exports the full save to new files.
 - Files changed externally after opening must be reloaded before saving.
 - Replacement files are staged first. If a replacement fails, completed replacements are rolled back. An interrupted process or power loss cannot be made atomic across two files; the original backups remain available.
 - **Save As** follows the same pairing rules for standard names. Other names export a single file.
