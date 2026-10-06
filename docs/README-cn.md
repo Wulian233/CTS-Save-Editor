@@ -42,8 +42,10 @@ npm run tauri dev
 
 ```sh
 npm run format
-npm run format:check
-npm run lint
+npx prettier --check .
+cargo fmt --all -- --check
+npx oxlint --deny-warnings src vite.config.ts
+npx biome lint src/style.css --error-on-warnings
 npm run check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 npm run tauri build
@@ -51,7 +53,7 @@ npm run tauri build
 
 Prettier 格式化前端代码，rustfmt 格式化 Rust；Oxlint 和 Biome 检查 TypeScript 与 CSS。检查遇到警告会失败。项目没有测试文件和测试依赖。
 
-`npm run dev` / `npm run preview` 可在浏览器中查看前端。文件操作需要桌面程序或 `tauri dev`。
+`npm run dev` 可在浏览器中查看前端。文件操作需要桌面程序或 `tauri dev`。
 
 | 平台                | 产物                     |
 | ------------------- | ------------------------ |

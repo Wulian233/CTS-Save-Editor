@@ -58,9 +58,11 @@ jobs:
       - name: Install locked frontend dependencies
         run: npm ci
       - name: Check formatting
-        run: npm run format:check
+        run: |
+          npx prettier --check .
+          cargo fmt --all -- --check
       - name: Lint frontend
-        run: npm run lint
+        run: npx oxlint --deny-warnings src vite.config.ts && npx biome lint src/style.css --error-on-warnings
       - name: Lint Rust
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Build native application

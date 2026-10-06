@@ -35,14 +35,16 @@ npm run tauri dev
 
 ```sh
 npm run format        # Prettier + rustfmt
-npm run format:check
-npm run lint          # Oxlint + Biome CSS lint; warnings fail
+npx prettier --check .
+cargo fmt --all -- --check
+npx oxlint --deny-warnings src vite.config.ts
+npx biome lint src/style.css --error-on-warnings
 npm run check         # TypeScript
 cargo clippy --workspace --all-targets --locked -- -D warnings
 npm run tauri build
 ```
 
-`npm run dev` and `npm run preview` display the frontend in a browser. Native file dialogs and save editing require `tauri dev` or the built desktop app. There are no test files or test dependencies.
+`npm run dev` displays the frontend in a browser. Native file dialogs and save editing require `tauri dev` or the built desktop app. There are no test files or test dependencies.
 
 | Platform            | Build output                                                         |
 | ------------------- | -------------------------------------------------------------------- |
