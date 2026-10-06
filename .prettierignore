@@ -1,0 +1,7 @@
+node_modules
+target
+dist
+src-tauri/gen
+Cargo.lock
+package-lock.json
+LICENSE

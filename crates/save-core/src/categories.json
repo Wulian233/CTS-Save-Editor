@@ -1,0 +1,170 @@
+{
+  "exact": {
+    "statTotal": {
+      "name": "category.stats_progress",
+      "note": "category_note.stats_progress"
+    },
+    "statTotalIdeas": {
+      "name": "category.stats_progress",
+      "note": "category_note.stats_progress"
+    },
+    "primary_lock_level": {
+      "name": "category.stats_progress",
+      "note": "category_note.stats_progress"
+    },
+    "stat_doober": {
+      "name": "category.currency_resource",
+      "note": "category_note.currency_resource"
+    },
+    "idle_darwin": {
+      "name": "category.currency_resource",
+      "note": "category_note.currency_resource"
+    },
+    "kGuid": {
+      "name": "category.account_settings",
+      "note": "category_note.account_settings"
+    },
+    "LastReward": {
+      "name": "category.account_settings",
+      "note": "category_note.account_settings"
+    },
+    "w_primary_sim": {
+      "name": "category.account_settings",
+      "note": "category_note.account_settings"
+    }
+  },
+  "prefix": [
+    {
+      "tokens": ["achievement_", "achivement_", "ach_", "ac_", "ab_"],
+      "category": {
+        "name": "category.achievement",
+        "note": "category_note.achievement_source"
+      }
+    },
+    {
+      "tokens": ["stat_"],
+      "category": {
+        "name": "category.stats_progress",
+        "note": "category_note.stats_progress"
+      }
+    },
+    {
+      "tokens": ["bank", "beyond_bank"],
+      "category": {
+        "name": "category.currency_resource",
+        "note": "category_note.bank_pool"
+      }
+    },
+    {
+      "tokens": ["sim_score", "gs_"],
+      "category": {
+        "name": "category.stats_progress",
+        "note": "category_note.sim_score"
+      }
+    },
+    {
+      "tokens": ["effect_"],
+      "category": {
+        "name": "category.effect_bonus",
+        "note": "category_note.effect_bonus"
+      }
+    },
+    {
+      "tokens": ["prestige", "rebirth_", "re_"],
+      "category": {
+        "name": "category.prestige",
+        "note": "category_note.prestige"
+      }
+    },
+    {
+      "tokens": ["item_", "tech_", "m_", "i_", "t_", "man_", "znew_", "glitch_"],
+      "category": {
+        "name": "category.primary_sim",
+        "note": "category_note.primary_sim"
+      }
+    },
+    {
+      "tokens": ["d_"],
+      "category": {
+        "name": "category.dinosaur_sim",
+        "note": "category_note.dinosaur_sim"
+      }
+    },
+    {
+      "tokens": ["s_", "beyond_", "constellation_"],
+      "category": {
+        "name": "category.universe_sim",
+        "note": "category_note.universe_sim"
+      }
+    },
+    {
+      "tokens": ["lte", "event_", "lastEvent", "lastRedeemed", "EggDateEvent", "minBoostEvent"],
+      "category": {
+        "name": "category.event",
+        "note": "category_note.event"
+      }
+    },
+    {
+      "tokens": ["store_", "premium", "iap_", "pricing", "bundle_"],
+      "category": {
+        "name": "category.shop_paid",
+        "note": "category_note.shop_paid"
+      }
+    },
+    {
+      "tokens": ["glass_"],
+      "category": {
+        "name": "category.appearance_collection",
+        "note": "category_note.appearance_collection"
+      }
+    },
+    {
+      "tokens": ["a_", "automation", "nanobot"],
+      "category": {
+        "name": "category.automation",
+        "note": "category_note.automation"
+      }
+    }
+  ],
+  "substring": [
+    {
+      "tokens": ["date", "time", "boost"],
+      "category": {
+        "name": "category.time_boost",
+        "note": "category_note.time_boost"
+      }
+    },
+    {
+      "tokens": ["tutorial", "tut_", "ftue", "first"],
+      "category": {
+        "name": "category.tutorial",
+        "note": "category_note.tutorial"
+      }
+    },
+    {
+      "tokens": ["save", "version", "migrate", "rebootconv", "patch"],
+      "category": {
+        "name": "category.save_migration",
+        "note": "category_note.save_migration"
+      }
+    }
+  ],
+  "descriptions": [
+    "item_note.bank",
+    "item_note.bank_b",
+    "item_note.bank_c",
+    "item_note.bank_d",
+    "item_note.bank_e",
+    "item_note.bank_f",
+    "item_note.bank_g",
+    "item_note.beyond_bank_stardust",
+    "item_note.beyond_bank_dark",
+    "item_note.effect_game_speed",
+    "item_note.effect_idle",
+    "item_note.effect_dino_speed",
+    "item_note.effect_beyond_speed",
+    "item_note.effect_badge_speed",
+    "item_note.stat_beyond_rank",
+    "item_note.stat_doober"
+  ]
+}

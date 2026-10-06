@@ -1,0 +1,82 @@
+name: Build desktop apps
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows x64
+            target: x86_64-pc-windows-msvc
+            artifact: CTS-Save-Editor-windows-x64
+            args: --bundles nsis
+            path: target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          - os: ubuntu-24.04
+            name: Linux x64
+            target: x86_64-unknown-linux-gnu
+            artifact: CTS-Save-Editor-linux-x64
+            args: --no-bundle
+            path: target/x86_64-unknown-linux-gnu/release/CTS-Save-Editor-linux-x64.tar.gz
+          - os: macos-latest
+            name: macOS Apple Silicon
+            target: aarch64-apple-darwin
+            artifact: CTS-Save-Editor-macos-arm64
+            args: --bundles app,dmg
+            path: |
+              target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+              target/aarch64-apple-darwin/release/bundle/*.zip
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: latest
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: rustfmt,clippy
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev
+      - name: Install locked frontend dependencies
+        run: npm ci
+      - name: Check formatting
+        run: npm run format:check
+      - name: Lint frontend
+        run: npm run lint
+      - name: Lint Rust
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Build native application
+        run: npm run tauri build -- --target ${{ matrix.target }} ${{ matrix.args }}
+        env:
+          CI: true
+      - name: Archive Linux executable preserving permissions
+        if: runner.os == 'Linux'
+        run: tar -C "target/${{ matrix.target }}/release" -czf "target/${{ matrix.target }}/release/CTS-Save-Editor-linux-x64.tar.gz" cts-save-editor
+      - name: Archive macOS application preserving executable permissions
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent "target/${{ matrix.target }}/release/bundle/macos/CTS Save Editor.app" "target/${{ matrix.target }}/release/bundle/CTS-Save-Editor.app.zip"
+      - name: Upload installers and portable application
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+          if-no-files-found: error
+          retention-days: 14
