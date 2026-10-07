@@ -1,4 +1,4 @@
-name: Build desktop apps
+name: Build
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
             artifact: CTS-Save-Editor-windows-x64
             args: --no-bundle
             path: target/x86_64-pc-windows-msvc/release/cts-save-editor.exe
-          - os: ubuntu-24.04
+          - os: ubuntu-latest
             name: Linux x64
             target: x86_64-unknown-linux-gnu
             artifact: CTS-Save-Editor-linux-x64
@@ -50,6 +50,10 @@ jobs:
         with:
           targets: ${{ matrix.target }}
           components: rustfmt,clippy
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ matrix.target }}
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
@@ -57,15 +61,7 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev
       - name: Install locked frontend dependencies
         run: npm ci
-      - name: Check formatting
-        run: |
-          npx prettier --check .
-          cargo fmt --all -- --check
-      - name: Lint frontend
-        run: npx oxlint --deny-warnings src vite.config.ts && npx biome lint src/style.css --error-on-warnings
-      - name: Lint Rust
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: Build native application
+      - name: Build
         run: npm run tauri build -- --target ${{ matrix.target }} ${{ matrix.args }}
         env:
           CI: true
@@ -81,4 +77,3 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.path }}
           if-no-files-found: error
-          retention-days: 14

@@ -115,7 +115,6 @@
     "numeric_item": "Numeric Item"
   },
   "category_note": {
-    "achievement_source": "Achievement variables inferred from prefixes.",
     "stats_progress": "Progress or tracking variable.",
     "currency_resource": "Currency or resource balance.",
     "account_settings": "Player identity, reward history, or UI state.",
@@ -169,6 +168,9 @@
     "openSubtitle": "Choose a save folder or file. Edits are saved to both files.",
     "openFolder": "Choose save folder",
     "chooseFile": "Choose a file",
+    "launchGame": "Launch game",
+    "launchUnsavedPrompt": "The current save has unsaved changes. Launch the game anyway?",
+    "launchAnyway": "Launch anyway",
     "dropHint": "Drop a file or folder to open it",
     "detectedSaves": "Default locations",
     "rescan": "Refresh",

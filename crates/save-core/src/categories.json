@@ -38,7 +38,7 @@
       "tokens": ["achievement_", "achivement_", "ach_", "ac_", "ab_"],
       "category": {
         "name": "category.achievement",
-        "note": "category_note.achievement_source"
+        "note": ""
       }
     },
     {

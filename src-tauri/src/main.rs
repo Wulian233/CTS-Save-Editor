@@ -323,14 +323,11 @@ async fn backup_session(
             .iter()
             .map(|(p, _)| p.clone())
             .collect::<Vec<_>>();
-        let root = directory
-            .map(PathBuf::from)
-            .map(Ok)
-            .unwrap_or_else(|| {
-                dirs::data_local_dir()
-                    .map(|p| p.join("CTS Save Editor/backups"))
-                    .ok_or("Could not find the application data folder")
-            })?;
+        let root = directory.map(PathBuf::from).map(Ok).unwrap_or_else(|| {
+            dirs::data_local_dir()
+                .map(|p| p.join("CTS Save Editor/backups"))
+                .ok_or("Could not find the application data folder")
+        })?;
         files::backup(&files::snapshot(&paths)?, &root).map(|p| p.to_string_lossy().into())
     })
     .await

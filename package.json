@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",
-    "dev": "tauri dev",
+    "dev": "vite",
+    "tauri:dev": "tauri dev",
     "check": "tsc --noEmit",
     "format": "prettier --write . && cargo fmt --all",
     "lint:fix": "oxlint --fix --deny-warnings src vite.config.ts && biome lint src/style.css --write --error-on-warnings"

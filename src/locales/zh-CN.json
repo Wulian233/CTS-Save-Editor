@@ -115,7 +115,6 @@
     "numeric_item": "数值项目"
   },
   "category_note": {
-    "achievement_source": "根据前缀推断出的成就变量",
     "stats_progress": "统计或进度变量",
     "currency_resource": "资源或货币数量",
     "account_settings": "玩家标识、奖励记录或界面状态",
@@ -169,6 +168,9 @@
     "openSubtitle": "选择存档文件夹或文件。修改会同时写入两份存档。",
     "openFolder": "选择存档文件夹",
     "chooseFile": "选择文件",
+    "launchGame": "启动游戏",
+    "launchUnsavedPrompt": "当前存档有未保存的修改。仍要启动游戏吗？",
+    "launchAnyway": "仍然启动",
     "dropHint": "拖入文件或文件夹也可打开",
     "detectedSaves": "默认位置",
     "rescan": "重新查找",

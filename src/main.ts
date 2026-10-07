@@ -147,7 +147,7 @@ function bind(id: string, fn: () => void | Promise<void>) {
 function render() {
   root.innerHTML = `<div class="app-shell">
     <aside class="rail"><a class="brand" href="#" id="brand" aria-label="CTS Save Editor">${icon('atom')}<span>CTS<span class="brand-small">SAVE EDITOR</span></span></a>
-      <nav aria-label="${escape(t('new.navigation'))}"><button id="nav-home" class="nav-item ${page === 'home' ? 'active' : ''}">${icon('folder')}<span>${escape(t('new.saves'))}</span></button><button id="nav-editor" class="nav-item ${page === 'editor' ? 'active' : ''}" ${!view ? 'disabled' : ''}>${icon('edit')}<span>${escape(t('new.workspace'))}</span>${view?.dirty ? '<i class="dirty-dot"></i>' : ''}</button></nav>
+      <nav aria-label="${escape(t('new.navigation'))}"><button id="nav-home" class="nav-item ${page === 'home' ? 'active' : ''}">${icon('folder')}<span>${escape(t('new.saves'))}</span></button><button id="nav-editor" class="nav-item ${page === 'editor' ? 'active' : ''}" ${!view ? 'disabled' : ''}>${icon('edit')}<span>${escape(t('new.workspace'))}</span>${view?.dirty ? '<i class="dirty-dot"></i>' : ''}</button><button id="nav-launch-game" class="nav-item">${icon('game')}<span>${escape(t('new.launchGame'))}</span></button></nav>
       <div class="rail-bottom"><div class="theme-switch" role="group" aria-label="${escape(t('new.theme'))}">${(['light', 'dark', 'system'] as const).map((theme) => `<button data-theme="${theme}" class="${getTheme() === theme ? 'active' : ''}" title="${escape(t(`new.theme_${theme}`))}" aria-label="${escape(t(`new.theme_${theme}`))}" aria-pressed="${getTheme() === theme}">${icon(theme)}</button>`).join('')}</div><span class="version">v${escape(appConfig.version)}</span><button class="language" id="language" aria-label="${getLocale() === 'zh-CN' ? 'Switch to English' : '切换到简体中文'}">${icon('globe')}<span>${getLocale() === 'zh-CN' ? 'English' : '简体中文'}</span></button></div>
     </aside>
     <main><header class="topbar"><span class="breadcrumb">Cell to Singularity <span>/</span> ${escape(t(page === 'home' ? 'new.saves' : 'new.workspace'))}</span><span class="local-badge"><i></i>${escape(t('new.localOnly'))}</span></header>
@@ -166,6 +166,18 @@ function render() {
       page = 'editor';
       render();
     }
+  });
+  bind('nav-launch-game', async () => {
+    if (view?.dirty) {
+      const proceed = await confirm(t('new.launchUnsavedPrompt'), {
+        title: t('new.unsaved'),
+        kind: 'warning',
+        okLabel: t('new.launchAnyway'),
+        cancelLabel: t('new.keepEditing'),
+      });
+      if (!proceed) return;
+    }
+    await openUrl('steam://run/977400');
   });
   bind('language', () => {
     setLocale(getLocale() === 'zh-CN' ? 'en-US' : 'zh-CN');
@@ -370,7 +382,7 @@ function renderInspector() {
   }
   const mode = editorMode(entry);
   const name = gameName(entry.key);
-  inspector.innerHTML = `<div class="inspector-top"><span class="eyebrow">${escape(t('inspector.title'))}</span>${icon('edit')}</div><h2>${escape(note(entry) || entry.key)}</h2><code class="inspector-key">${escape(entry.key)}</code>${name ? `<div class="bilingual-name"><div><span>中文</span><p lang="zh-CN">${escape(name.zh)}</p></div><div><span>English</span><p lang="en">${escape(name.en)}</p></div></div>` : ''}<dl><dt>${escape(t('inspector.category'))}</dt><dd>${escape(t(entry.category))}</dd><dt>${escape(t('new.currentValue'))}</dt><dd class="mono current-value">${escape(entry.value)}</dd>${changed(entry) ? `<dt>${escape(t('inspector.original_value'))}</dt><dd class="mono">${escape(originals.get(entry.id)!)} </dd>` : ''}</dl><form id="edit-form"><label for="edit-value">${escape(t('inspector.new_value'))}</label>${mode === 'boolean' ? `<select id="edit-value"><option ${entry.value === 'True' ? 'selected' : ''}>True</option><option ${entry.value === 'False' ? 'selected' : ''}>False</option></select>` : `<textarea id="edit-value" rows="${mode === 'text' ? 4 : 2}" spellcheck="false" ${mode === 'number' ? 'inputmode="decimal"' : ''}>${escape(entry.value)}</textarea>`}<p class="input-hint">${escape(t(mode === 'number' ? 'new.numberHint' : mode === 'boolean' ? 'new.booleanHint' : 'new.textHint', { key: modKey }))}</p><button class="button primary apply-button" type="submit">${icon('check')}${escape(t('buttons.apply_change'))}</button><button id="restore" class="text-button" type="button">${icon('refresh')}${escape(t('buttons.restore_value'))}</button>${changed(entry) ? `<button id="restore-original" class="text-button" type="button">${icon('undo')}${escape(t('new.restoreOriginal'))}</button>` : ''}<p id="edit-error" class="inline-error" role="alert"></p></form><div class="note-box"><h3>${escape(t('inspector.category_note'))}</h3><p>${escape(t(entry.note))}</p></div>`;
+  inspector.innerHTML = `<div class="inspector-top"><span class="eyebrow">${escape(t('inspector.title'))}</span>${icon('edit')}</div><h2>${escape(note(entry) || entry.key)}</h2><code class="inspector-key">${escape(entry.key)}</code>${name ? `<div class="bilingual-name"><div><span>中文</span><p lang="zh-CN">${escape(name.zh)}</p></div><div><span>English</span><p lang="en">${escape(name.en)}</p></div></div>` : ''}<dl><dt>${escape(t('inspector.category'))}</dt><dd>${escape(t(entry.category))}</dd><dt>${escape(t('new.currentValue'))}</dt><dd class="mono current-value">${escape(entry.value)}</dd>${changed(entry) ? `<dt>${escape(t('inspector.original_value'))}</dt><dd class="mono">${escape(originals.get(entry.id)!)} </dd>` : ''}</dl><form id="edit-form"><label for="edit-value">${escape(t('inspector.new_value'))}</label>${mode === 'boolean' ? `<select id="edit-value"><option ${entry.value === 'True' ? 'selected' : ''}>True</option><option ${entry.value === 'False' ? 'selected' : ''}>False</option></select>` : `<textarea id="edit-value" rows="${mode === 'text' ? 4 : 2}" spellcheck="false" ${mode === 'number' ? 'inputmode="decimal"' : ''}>${escape(entry.value)}</textarea>`}<p class="input-hint">${escape(t(mode === 'number' ? 'new.numberHint' : mode === 'boolean' ? 'new.booleanHint' : 'new.textHint', { key: modKey }))}</p><button class="button primary apply-button" type="submit">${icon('check')}${escape(t('buttons.apply_change'))}</button><button id="restore" class="text-button" type="button">${icon('refresh')}${escape(t('buttons.restore_value'))}</button>${changed(entry) ? `<button id="restore-original" class="text-button" type="button">${icon('undo')}${escape(t('new.restoreOriginal'))}</button>` : ''}<p id="edit-error" class="inline-error" role="alert"></p></form>${entry.note ? `<div class="note-box"><h3>${escape(t('inspector.category_note'))}</h3><p>${escape(t(entry.note))}</p></div>` : ''}`;
   bind('restore-original', () =>
     action(async () => {
       acceptView(await invoke<View>('restore_entry', { id: entry.id }));

@@ -12,7 +12,7 @@
     "dialog:allow-message",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "https://*" }, { "url": "http://*" }]
+      "allow": [{ "url": "https://*" }, { "url": "http://*" }, { "url": "steam://run/977400" }]
     },
     "opener:allow-reveal-item-in-dir"
   ]

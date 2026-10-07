@@ -8,6 +8,32 @@ export interface GameName {
 }
 
 const names = new Map<string, GameName>();
+function romanNumeral(value: number): string {
+  const digits: [number, string][] = [
+    [1000, 'M'],
+    [900, 'CM'],
+    [500, 'D'],
+    [400, 'CD'],
+    [100, 'C'],
+    [90, 'XC'],
+    [50, 'L'],
+    [40, 'XL'],
+    [10, 'X'],
+    [9, 'IX'],
+    [5, 'V'],
+    [4, 'IV'],
+    [1, 'I'],
+  ];
+  let remaining = value;
+  let numeral = '';
+  for (const [amount, symbol] of digits) {
+    while (remaining >= amount) {
+      numeral += symbol;
+      remaining -= amount;
+    }
+  }
+  return numeral;
+}
 const aliases: Record<string, string> = {
   bank: 'd_entropy',
   bank_b: 'w_idea',
@@ -63,7 +89,19 @@ export async function loadGameNames() {
 }
 export function gameName(key: string): GameName | undefined {
   const base = key.replace(/_(?:desc(?:ription)?|effect|body(?:_\d+)?)$/, '');
-  return names.get(base) ?? names.get(key);
+  const exact = names.get(base) ?? names.get(key);
+  if (exact) return exact;
+  const itemName = base.startsWith('stat_') ? names.get(`item_${base.slice(5)}`) : undefined;
+  if (itemName) return itemName;
+  const level = base.match(/_(\d+)$/);
+  const levelName = names.get(base.replace(/_\d+$/, ''));
+  const numeral = level ? romanNumeral(Number(level[1])) : '';
+  return levelName && numeral
+    ? {
+        zh: `${levelName.zh} ${numeral}`,
+        en: `${levelName.en} ${numeral}`,
+      }
+    : levelName;
 }
 export function primaryName(key: string): string | undefined {
   const name = gameName(key);

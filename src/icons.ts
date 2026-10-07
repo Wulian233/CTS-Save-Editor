@@ -21,6 +21,7 @@ import {
   Undo2,
   Redo2,
   ListChecks,
+  Gamepad2,
 } from 'lucide';
 
 const icons = {
@@ -45,6 +46,7 @@ const icons = {
   undo: Undo2,
   redo: Redo2,
   changes: ListChecks,
+  game: Gamepad2,
 };
 
 export function icon(name: string, cls = '') {
