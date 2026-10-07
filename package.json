@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc --noEmit && vite build",
     "dev": "vite",
+    "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "check": "tsc --noEmit",
     "format": "prettier --write . && cargo fmt --all",
