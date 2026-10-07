@@ -249,20 +249,8 @@ fn restore_entry(id: usize, state: State<AppState>) -> Result<View, String> {
     Ok(session.view())
 }
 
-fn backup_root() -> Result<PathBuf, String> {
-    dirs::data_local_dir()
-        .map(|p| p.join("CTS Save Editor/backups"))
-        .ok_or("Could not find the application data folder".into())
-}
-
-#[derive(Serialize)]
-struct Saved {
-    view: View,
-    backup: String,
-}
-
 #[tauri::command]
-async fn save_session(path: Option<String>, app: tauri::AppHandle) -> Result<Saved, String> {
+async fn save_session(path: Option<String>, app: tauri::AppHandle) -> Result<View, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
         let mut guard = state.0.lock().map_err(|e| e.to_string())?;
@@ -301,7 +289,7 @@ async fn save_session(path: Option<String>, app: tauri::AppHandle) -> Result<Sav
                 Ok(session.editor.data.clone())
             })
             .collect::<Result<Vec<_>, String>>()?;
-        let backup = files::save(&original, &contents, &backup_root()?)?;
+        files::save(&original, &contents)?;
         if let Some(index) = targets.iter().position(|path| path == &source)
             && contents[index] != session.editor.data
         {
@@ -315,10 +303,7 @@ async fn save_session(path: Option<String>, app: tauri::AppHandle) -> Result<Sav
             .collect();
         session.baseline = session.editor.data.clone();
         session.baseline_entries = session.editor.parse();
-        Ok(Saved {
-            view: session.view(),
-            backup: backup.to_string_lossy().into(),
-        })
+        Ok(session.view())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -341,7 +326,11 @@ async fn backup_session(
         let root = directory
             .map(PathBuf::from)
             .map(Ok)
-            .unwrap_or_else(backup_root)?;
+            .unwrap_or_else(|| {
+                dirs::data_local_dir()
+                    .map(|p| p.join("CTS Save Editor/backups"))
+                    .ok_or("Could not find the application data folder")
+            })?;
         files::backup(&files::snapshot(&paths)?, &root).map(|p| p.to_string_lossy().into())
     })
     .await

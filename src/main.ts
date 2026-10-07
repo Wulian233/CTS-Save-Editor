@@ -25,6 +25,8 @@ let originals = new Map<number, string>();
 let changedIds = new Set<number>();
 let reviewing = false;
 let lastBackup = '';
+const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
+const modKey = isMac ? '⌘' : 'Ctrl';
 let pendingUpdate: Update | null = null;
 let toastTimer: ReturnType<typeof setTimeout>;
 const escape = (v: string | number) =>
@@ -187,7 +189,7 @@ function render() {
 function home() {
   const found = locations.filter((l) => l.files.some((f) => f.exists)).length;
   return `<section class="home-page"><div class="page-heading"><div><p class="eyebrow">${escape(t('new.homeEyebrow'))}</p><h1>${escape(t('new.homeTitle'))}</h1><p class="muted">${escape(t('new.homeSubtitle'))}</p></div><span class="heading-count">${escape(t('new.detected', { count: found }))}</span></div>
-    <section class="open-hero" id="dropzone"><div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div><div class="nucleus">${icon('atom')}</div><span class="particle p-one"></span><span class="particle p-two"></span><span class="particle p-three"></span></div><div class="hero-content"><span class="mini-label">${escape(t('new.startHere'))}</span><h2>${escape(t('new.openTitle'))}</h2><p>${escape(t('new.openSubtitle'))}</p><div class="hero-actions">${button('open-folder', 'new.openFolder', 'folder', 'primary')}${button('open-file', 'new.chooseFile', 'file')}</div><p class="drop-hint">${escape(t('new.dropHint'))} <kbd>${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} O</kbd></p></div></section>
+    <section class="open-hero" id="dropzone"><div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div><div class="nucleus">${icon('atom')}</div><span class="particle p-one"></span><span class="particle p-two"></span><span class="particle p-three"></span></div><div class="hero-content"><span class="mini-label">${escape(t('new.startHere'))}</span><h2>${escape(t('new.openTitle'))}</h2><p>${escape(t('new.openSubtitle'))}</p><div class="hero-actions">${button('open-folder', 'new.openFolder', 'folder', 'primary')}${button('open-file', 'new.chooseFile', 'file')}</div><p class="drop-hint">${escape(t('new.dropHint'))} <kbd>${modKey} O</kbd></p></div></section>
     <div class="section-heading"><h2>${escape(t('new.detectedSaves'))}</h2><button id="scan" class="text-button">${icon('refresh')}${escape(t('new.rescan'))}</button></div>
     <div class="location-grid">${locations.length ? locations.map((l, i) => `<article class="location-card"><div class="card-top"><span class="folder-icon">${icon('folder')}</span><span class="badge ${l.files.some((f) => f.exists) ? 'ready' : ''}">${escape(t(l.files.some((f) => f.exists) ? 'new.available' : 'new.notFound'))}</span></div><h3>${escape(l.label)}</h3><p class="path" title="${escape(l.path)}">${escape(l.path)}</p><div class="file-pair">${l.files.map((f) => `<div><span class="file-state ${f.exists ? 'exists' : ''}"></span><span>${escape(f.name)}</span><span>${f.exists ? size(f.size) : escape(t('new.missing'))}</span></div>`).join('')}</div><div class="card-actions"><button data-location="${i}" class="button primary" ${!l.files.some((f) => f.exists) ? 'disabled' : ''}>${escape(t('new.openSave'))}${icon('arrow')}</button><button data-reveal="${i}" class="icon-button" title="${escape(t('buttons.reveal_path'))}" aria-label="${escape(t('buttons.reveal_path'))}">${icon('folder')}</button></div>${l.files.filter((f) => f.exists).length === 2 ? `<div class="source-choice">${escape(t('new.chooseSource'))} ${l.files.map((f) => `<button data-source-path="${escape(f.path)}">${escape(f.name)}</button>`).join('')}</div>` : ''}</article>`).join('') : `<div class="no-locations">${icon('folder')}<p>${escape(t('new.noLocations'))}</p></div>`}</div>
     <div class="home-lower"><section class="recent-section"><div class="section-heading"><h2>${escape(t('new.recent'))}</h2><button class="text-button" id="clear-recents">${escape(t('new.clearHistory'))}</button></div>${
@@ -199,7 +201,7 @@ function home() {
             )
             .join('')
         : `<p class="empty-recent">${escape(t('new.noRecent'))}</p>`
-    }</section><aside class="save-tip">${icon('shield')}<h3>${escape(t('new.pairTitle'))}</h3><p>${escape(t('new.pairTip'))}</p><span>${escape(t('new.backupTip'))}</span></aside></div>
+    }</section><aside class="save-tip">${icon('shield')}<h3>${escape(t('new.pairTitle'))}</h3><p>${escape(t('new.pairTip'))}</p></aside></div>
     <details class="manual-path"><summary>${escape(t('new.manualPath'))}</summary><form id="path-form"><input id="path-input" aria-label="${escape(t('new.pathLabel'))}" placeholder="${escape(t('new.pathPlaceholder'))}" required><button class="button" type="submit">${escape(t('buttons.open'))}${icon('arrow')}</button></form></details>
     <label class="autoload-setting"><input id="autoload" type="checkbox" ${localStorage.getItem('cts.autoload') !== 'false' ? 'checked' : ''}>${escape(t('new.autoload'))}</label>
     ${view ? `<button id="resume" class="button resume">${icon('back')}${escape(t('new.resume'))} · ${escape(basename(view.path))}</button>` : ''}
@@ -261,7 +263,7 @@ function workspace() {
   view.entries.forEach((e) => counts.set(e.category, (counts.get(e.category) ?? 0) + 1));
   const changes = view.entries.filter(changed).length;
   return `<section class="editor-page"><div class="editor-heading"><div><p class="eyebrow">${escape(t('new.saveWorkspace'))}</p><h1>${escape(basename(view.path))}<span class="badge ${view.dirty ? 'pending' : 'ready'}">${escape(t(view.dirty ? 'new.unsaved' : 'new.saved'))}</span></h1><button id="reveal-current" class="path path-button" title="${escape(view.path)}">${escape(directory(view.path))}${icon('folder')}</button></div><div class="editor-actions">${button('undo', 'new.undo', 'undo', '', !view.canUndo)}${button('redo', 'new.redo', 'redo', '', !view.canRedo)}${button('backup', 'buttons.backup', 'shield')}${button('reload', 'buttons.reload', 'refresh')}${button('save-as', 'buttons.save_as', 'download')}${button('save', view.files.length > 1 ? 'new.saveBoth' : 'buttons.save_in_place', 'save', 'primary')}</div></div>
-    <div class="save-strip"><span>${icon('file')}${view.files.map((f) => `<span class="paired-name">${escape(f.name)}${!f.exists ? `<small>${escape(t('new.willCreate'))}</small>` : ''}</span>`).join('<span class="pair-plus">+</span>')}</span><span>${icon('shield')}${escape(t('new.automaticBackup'))}</span></div>
+    <div class="save-strip"><span>${icon('file')}${view.files.map((f) => `<span class="paired-name">${escape(f.name)}${!f.exists ? `<small>${escape(t('new.willCreate'))}</small>` : ''}</span>`).join('<span class="pair-plus">+</span>')}</span></div>
     <div class="editor-layout"><aside class="categories"><h2>${escape(t('filters.category'))}</h2><button class="category-button ${category === 'all' ? 'active' : ''}" data-category="all"><span>${escape(t('new.allVariables'))}</span><span>${view.entries.length}</span></button>${Array.from(
       counts,
     )
@@ -271,7 +273,7 @@ function workspace() {
           `<button class="category-button ${category === c ? 'active' : ''}" data-category="${escape(c)}"><span>${escape(t(c))}</span><span>${count}</span></button>`,
       )
       .join('')}</aside>
-      <section class="variables"><div class="filter-bar"><label class="search-field">${icon('search')}<input id="search" value="${escape(query)}" placeholder="${escape(t('new.searchPlaceholder'))}" aria-label="${escape(t('filters.search'))}"><kbd>${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} F</kbd></label><button id="clear-filters" class="icon-button" title="${escape(t('buttons.clear_filter'))}" aria-label="${escape(t('buttons.clear_filter'))}">${icon('close')}</button></div><div class="compact-category"><label for="category-select">${escape(t('filters.category'))}</label><select id="category-select"><option value="all">${escape(t('new.allVariables'))}</option>${Array.from(
+      <section class="variables"><div class="filter-bar"><label class="search-field">${icon('search')}<input id="search" value="${escape(query)}" placeholder="${escape(t('new.searchPlaceholder'))}" aria-label="${escape(t('filters.search'))}"><kbd>${modKey} F</kbd></label><button id="clear-filters" class="icon-button" title="${escape(t('buttons.clear_filter'))}" aria-label="${escape(t('buttons.clear_filter'))}">${icon('close')}</button></div><div class="compact-category"><label for="category-select">${escape(t('filters.category'))}</label><select id="category-select"><option value="all">${escape(t('new.allVariables'))}</option>${Array.from(
         counts.keys(),
       )
         .sort((a, b) => t(a).localeCompare(t(b)))
@@ -281,7 +283,7 @@ function workspace() {
         )
         .join(
           '',
-        )}</select></div><div class="table-toolbar"><label class="changes-toggle"><input id="changes-only" type="checkbox" ${changedOnly ? 'checked' : ''}>${escape(t('new.changes'))}<span id="changes-count">${changes}</span></label></div><div class="table-scroll"><table><thead><tr><th>${escape(t('new.columnName'))}</th><th colspan="2">${escape(t('filters.column_value'))}</th></tr></thead><tbody id="rows"></tbody></table><div id="empty-filter" class="empty-filter" hidden>${icon('search')}<h3>${escape(t('new.noResults'))}</h3><p>${escape(t('new.tryAnotherFilter'))}</p></div></div><footer class="table-footer"><span id="item-count"></span><div><button id="previous-page" class="icon-button" aria-label="${escape(t('new.previous'))}">${icon('back')}</button><span id="page-count"></span><button id="next-page" class="icon-button" aria-label="${escape(t('new.next'))}">${icon('arrow')}</button></div></footer></section>
+        )}</select></div><div class="table-toolbar"><label class="changes-toggle"><input id="changes-only" type="checkbox" ${changedOnly ? 'checked' : ''}>${escape(t('new.changes'))}<span id="changes-count">${changes}</span></label></div><div class="table-scroll"><table><thead><tr><th>${escape(t('new.columnName'))}</th><th>${escape(t('filters.column_value'))}</th></tr></thead><tbody id="rows"></tbody></table><div id="empty-filter" class="empty-filter" hidden>${icon('search')}<h3>${escape(t('new.noResults'))}</h3><p>${escape(t('new.tryAnotherFilter'))}</p></div></div><footer class="table-footer"><span id="item-count"></span><div><button id="previous-page" class="icon-button" aria-label="${escape(t('new.previous'))}">${icon('back')}</button><span id="page-count"></span><button id="next-page" class="icon-button" aria-label="${escape(t('new.next'))}">${icon('arrow')}</button></div></footer></section>
       <aside id="inspector" class="inspector"></aside>
     </div><div class="workspace-footer">${button('review-changes', 'new.reviewChanges', 'changes', '', changes === 0)}<span>${icon('info')}${escape(t('new.editHint'))}</span><button class="text-button" id="show-backup" ${!lastBackup ? 'disabled' : ''}>${escape(t('new.showBackup'))}${icon('arrow')}</button></div>
   </section>`;
@@ -368,7 +370,7 @@ function renderInspector() {
   }
   const mode = editorMode(entry);
   const name = gameName(entry.key);
-  inspector.innerHTML = `<div class="inspector-top"><span class="eyebrow">${escape(t('inspector.title'))}</span>${icon('edit')}</div><h2>${escape(note(entry) || entry.key)}</h2><code class="inspector-key">${escape(entry.key)}</code>${name ? `<div class="bilingual-name"><div><span>中文</span><p lang="zh-CN">${escape(name.zh)}</p></div><div><span>English</span><p lang="en">${escape(name.en)}</p></div></div>` : ''}<dl><dt>${escape(t('inspector.category'))}</dt><dd>${escape(t(entry.category))}</dd><dt>${escape(t('new.currentValue'))}</dt><dd class="mono current-value">${escape(entry.value)}</dd>${changed(entry) ? `<dt>${escape(t('inspector.original_value'))}</dt><dd class="mono">${escape(originals.get(entry.id)!)} </dd>` : ''}</dl><form id="edit-form"><label for="edit-value">${escape(t('inspector.new_value'))}</label>${mode === 'boolean' ? `<select id="edit-value"><option ${entry.value === 'True' ? 'selected' : ''}>True</option><option ${entry.value === 'False' ? 'selected' : ''}>False</option></select>` : `<textarea id="edit-value" rows="${mode === 'text' ? 4 : 2}" spellcheck="false" ${mode === 'number' ? 'inputmode="decimal"' : ''}>${escape(entry.value)}</textarea>`}<p class="input-hint">${escape(t(mode === 'number' ? 'new.numberHint' : mode === 'boolean' ? 'new.booleanHint' : 'new.textHint'))}</p><button class="button primary apply-button" type="submit">${icon('check')}${escape(t('buttons.apply_change'))}</button><button id="restore" class="text-button" type="button">${icon('refresh')}${escape(t('buttons.restore_value'))}</button>${changed(entry) ? `<button id="restore-original" class="text-button" type="button">${icon('undo')}${escape(t('new.restoreOriginal'))}</button>` : ''}<p id="edit-error" class="inline-error" role="alert"></p></form><div class="note-box"><h3>${escape(t('inspector.category_note'))}</h3><p>${escape(t(entry.note))}</p></div>`;
+  inspector.innerHTML = `<div class="inspector-top"><span class="eyebrow">${escape(t('inspector.title'))}</span>${icon('edit')}</div><h2>${escape(note(entry) || entry.key)}</h2><code class="inspector-key">${escape(entry.key)}</code>${name ? `<div class="bilingual-name"><div><span>中文</span><p lang="zh-CN">${escape(name.zh)}</p></div><div><span>English</span><p lang="en">${escape(name.en)}</p></div></div>` : ''}<dl><dt>${escape(t('inspector.category'))}</dt><dd>${escape(t(entry.category))}</dd><dt>${escape(t('new.currentValue'))}</dt><dd class="mono current-value">${escape(entry.value)}</dd>${changed(entry) ? `<dt>${escape(t('inspector.original_value'))}</dt><dd class="mono">${escape(originals.get(entry.id)!)} </dd>` : ''}</dl><form id="edit-form"><label for="edit-value">${escape(t('inspector.new_value'))}</label>${mode === 'boolean' ? `<select id="edit-value"><option ${entry.value === 'True' ? 'selected' : ''}>True</option><option ${entry.value === 'False' ? 'selected' : ''}>False</option></select>` : `<textarea id="edit-value" rows="${mode === 'text' ? 4 : 2}" spellcheck="false" ${mode === 'number' ? 'inputmode="decimal"' : ''}>${escape(entry.value)}</textarea>`}<p class="input-hint">${escape(t(mode === 'number' ? 'new.numberHint' : mode === 'boolean' ? 'new.booleanHint' : 'new.textHint', { key: modKey }))}</p><button class="button primary apply-button" type="submit">${icon('check')}${escape(t('buttons.apply_change'))}</button><button id="restore" class="text-button" type="button">${icon('refresh')}${escape(t('buttons.restore_value'))}</button>${changed(entry) ? `<button id="restore-original" class="text-button" type="button">${icon('undo')}${escape(t('new.restoreOriginal'))}</button>` : ''}<p id="edit-error" class="inline-error" role="alert"></p></form><div class="note-box"><h3>${escape(t('inspector.category_note'))}</h3><p>${escape(t(entry.note))}</p></div>`;
   bind('restore-original', () =>
     action(async () => {
       acceptView(await invoke<View>('restore_entry', { id: entry.id }));
@@ -427,18 +429,17 @@ async function saveCurrent(as = false) {
     if (!path) return;
   }
   await action(async () => {
-    const result = await invoke<{ view: View; backup: string }>('save_session', { path });
-    acceptView(result.view);
+    const savedView = await invoke<View>('save_session', { path });
+    acceptView(savedView);
     reviewing = false;
-    lastBackup = result.backup;
     localStorage.setItem(
       'cts.recents',
       JSON.stringify(
-        [result.view.path, ...readRecents().filter((p) => p !== result.view.path)].slice(0, 5),
+        [savedView.path, ...readRecents().filter((p) => p !== savedView.path)].slice(0, 5),
       ),
     );
     render();
-    toast(t('new.savedFiles', { files: result.view.files.map((f) => f.name).join(' + ') }));
+    toast(t('new.savedFiles', { files: savedView.files.map((f) => f.name).join(' + ') }));
   });
 }
 async function history(redo = false) {

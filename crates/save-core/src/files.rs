@@ -99,11 +99,7 @@ fn stage(path: &Path, data: &[u8]) -> Result<NamedTempFile, String> {
     Ok(temp)
 }
 
-pub fn save(
-    original: &Snapshot,
-    contents: &[Vec<u8>],
-    backup_root: &Path,
-) -> Result<PathBuf, String> {
+pub fn save(original: &Snapshot, contents: &[Vec<u8>]) -> Result<(), String> {
     if original.len() != contents.len() {
         return Err("Save file count does not match output count".into());
     }
@@ -118,7 +114,6 @@ pub fn save(
     for ((path, _), data) in original.iter().zip(contents) {
         staged.push(stage(path, data)?);
     }
-    let backup_path = backup(original, backup_root)?;
     for (i, ((path, _), temp)) in original.iter().zip(staged).enumerate() {
         if let Err(error) = temp.persist(path) {
             let mut failures = Vec::new();
@@ -133,11 +128,10 @@ pub fn save(
                 }
             }
             return Err(format!(
-                "Save failed: {error}. Backup: {}. Rollback errors: {}",
-                backup_path.display(),
+                "Save failed: {error}. Rollback errors: {}",
                 failures.join("; ")
             ));
         }
     }
-    Ok(backup_path)
+    Ok(())
 }
