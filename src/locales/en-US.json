@@ -227,6 +227,8 @@
     "undoDone": "Change undone",
     "redoDone": "Change redone",
     "columnName": "Name / variable",
-    "namesUnavailable": "Game language files could not be loaded. Variable keys are shown instead."
+    "namesUnavailable": "Game language files could not be loaded. Variable keys are shown instead.",
+    "scanning": "Finding local saves…",
+    "processing": "Working, please wait…"
   }
 }

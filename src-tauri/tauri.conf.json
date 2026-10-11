@@ -15,6 +15,7 @@
         "title": "CTS Save Editor",
         "width": 1280,
         "height": 850,
+        "center": true,
         "minWidth": 800,
         "minHeight": 600
       }

@@ -13,6 +13,11 @@ import './style.css';
 const root = document.querySelector<HTMLDivElement>('#app')!;
 let view: View | null = null;
 let locations: Location[] = [];
+let discovering = isTauri();
+let nameLoading: Promise<void> | undefined;
+let namesUnavailable = false;
+let searchTimer: ReturnType<typeof setTimeout>;
+const searchIndex = new Map<number, string>();
 let page: 'home' | 'editor' = 'home';
 let busy = false;
 let query = '';
@@ -57,6 +62,7 @@ function changed(entry: Entry) {
 }
 function acceptView(next: View) {
   view = next;
+  searchIndex.clear();
   originals = new Map(
     Object.entries(next.originalValues).map(([id, value]) => [Number(id), value]),
   );
@@ -80,6 +86,7 @@ async function action(work: () => Promise<void>) {
   busy = true;
   root.classList.add('busy');
   root.setAttribute('aria-busy', 'true');
+  root.querySelector<HTMLElement>('.app-shell')!.inert = true;
   try {
     await work();
   } catch (e) {
@@ -88,6 +95,7 @@ async function action(work: () => Promise<void>) {
     busy = false;
     root.classList.remove('busy');
     root.setAttribute('aria-busy', 'false');
+    syncInteractivity();
   }
 }
 async function mayDiscard() {
@@ -104,7 +112,12 @@ async function mayDiscard() {
 async function load(path: string) {
   await action(async () => {
     if (!(await mayDiscard())) return;
-    const loaded = await invoke<View>('open_save', { path });
+    nameLoading ??= loadGameNames().catch((error) => {
+      nameLoading = undefined;
+      namesUnavailable = true;
+      console.error(error);
+    });
+    const [loaded] = await Promise.all([invoke<View>('open_save', { path }), nameLoading]);
     acceptView(loaded);
     reviewing = false;
     query = '';
@@ -119,7 +132,8 @@ async function load(path: string) {
       JSON.stringify([loaded.path, ...readRecents().filter((p) => p !== loaded.path)].slice(0, 5)),
     );
     render();
-    toast(t('message.loaded'));
+    toast(t(namesUnavailable ? 'new.namesUnavailable' : 'message.loaded'), namesUnavailable);
+    namesUnavailable = false;
   });
 }
 async function pickFile(folder = false) {
@@ -145,14 +159,16 @@ function bind(id: string, fn: () => void | Promise<void>) {
   });
 }
 function render() {
+  clearTimeout(searchTimer);
+  searchIndex.clear();
   root.innerHTML = `<div class="app-shell">
     <aside class="rail"><a class="brand" href="#" id="brand" aria-label="CTS Save Editor">${icon('atom')}<span>CTS<span class="brand-small">SAVE EDITOR</span></span></a>
-      <nav aria-label="${escape(t('new.navigation'))}"><button id="nav-home" class="nav-item ${page === 'home' ? 'active' : ''}">${icon('folder')}<span>${escape(t('new.saves'))}</span></button><button id="nav-editor" class="nav-item ${page === 'editor' ? 'active' : ''}" ${!view ? 'disabled' : ''}>${icon('edit')}<span>${escape(t('new.workspace'))}</span>${view?.dirty ? '<i class="dirty-dot"></i>' : ''}</button><button id="nav-launch-game" class="nav-item">${icon('game')}<span>${escape(t('new.launchGame'))}</span></button></nav>
+      <nav aria-label="${escape(t('new.navigation'))}"><button id="nav-home" aria-label="${escape(t('new.saves'))}" title="${escape(t('new.saves'))}" class="nav-item ${page === 'home' ? 'active' : ''}">${icon('folder')}<span>${escape(t('new.saves'))}</span></button><button id="nav-editor" aria-label="${escape(t('new.workspace'))}" title="${escape(t('new.workspace'))}" class="nav-item ${page === 'editor' ? 'active' : ''}" ${!view ? 'disabled' : ''}>${icon('edit')}<span>${escape(t('new.workspace'))}</span>${view?.dirty ? '<i class="dirty-dot"></i>' : ''}</button><button id="nav-launch-game" aria-label="${escape(t('new.launchGame'))}" title="${escape(t('new.launchGame'))}" class="nav-item">${icon('game')}<span>${escape(t('new.launchGame'))}</span></button></nav>
       <div class="rail-bottom"><div class="theme-switch" role="group" aria-label="${escape(t('new.theme'))}">${(['light', 'dark', 'system'] as const).map((theme) => `<button data-theme="${theme}" class="${getTheme() === theme ? 'active' : ''}" title="${escape(t(`new.theme_${theme}`))}" aria-label="${escape(t(`new.theme_${theme}`))}" aria-pressed="${getTheme() === theme}">${icon(theme)}</button>`).join('')}</div><span class="version">v${escape(appConfig.version)}</span><button class="language" id="language" aria-label="${getLocale() === 'zh-CN' ? 'Switch to English' : '切换到简体中文'}">${icon('globe')}<span>${getLocale() === 'zh-CN' ? 'English' : '简体中文'}</span></button></div>
     </aside>
     <main><header class="topbar"><span class="breadcrumb">Cell to Singularity <span>/</span> ${escape(t(page === 'home' ? 'new.saves' : 'new.workspace'))}</span><span class="local-badge"><i></i>${escape(t('new.localOnly'))}</span></header>
       <div id="content">${page === 'home' ? home() : workspace()}</div>
-    </main></div><div id="toast" class="toast" role="status" aria-live="polite"></div><div id="update-slot"></div><div id="changes-slot"></div>`;
+    </main></div><div class="operation-status" role="status">${icon('refresh')}<span>${escape(t('new.processing'))}</span></div><div id="toast" class="toast" role="status" aria-live="polite"></div><div id="update-slot"></div><div id="changes-slot"></div>`;
   bind('brand', () => {
     page = 'home';
     render();
@@ -197,13 +213,14 @@ function render() {
   else bindWorkspace();
   renderUpdate();
   renderReview();
+  syncInteractivity();
 }
 function home() {
   const found = locations.filter((l) => l.files.some((f) => f.exists)).length;
-  return `<section class="home-page"><div class="page-heading"><div><p class="eyebrow">${escape(t('new.homeEyebrow'))}</p><h1>${escape(t('new.homeTitle'))}</h1><p class="muted">${escape(t('new.homeSubtitle'))}</p></div><span class="heading-count">${escape(t('new.detected', { count: found }))}</span></div>
+  return `<section class="home-page"><div class="page-heading"><div><p class="eyebrow">${escape(t('new.homeEyebrow'))}</p><h1>${escape(t('new.homeTitle'))}</h1><p class="muted">${escape(t('new.homeSubtitle'))}</p></div><span class="heading-count">${escape(discovering ? t('new.scanning') : t('new.detected', { count: found }))}</span></div>
     <section class="open-hero" id="dropzone"><div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div><div class="nucleus">${icon('atom')}</div><span class="particle p-one"></span><span class="particle p-two"></span><span class="particle p-three"></span></div><div class="hero-content"><span class="mini-label">${escape(t('new.startHere'))}</span><h2>${escape(t('new.openTitle'))}</h2><p>${escape(t('new.openSubtitle'))}</p><div class="hero-actions">${button('open-folder', 'new.openFolder', 'folder', 'primary')}${button('open-file', 'new.chooseFile', 'file')}</div><p class="drop-hint">${escape(t('new.dropHint'))} <kbd>${modKey} O</kbd></p></div></section>
-    <div class="section-heading"><h2>${escape(t('new.detectedSaves'))}</h2><button id="scan" class="text-button">${icon('refresh')}${escape(t('new.rescan'))}</button></div>
-    <div class="location-grid">${locations.length ? locations.map((l, i) => `<article class="location-card"><div class="card-top"><span class="folder-icon">${icon('folder')}</span><span class="badge ${l.files.some((f) => f.exists) ? 'ready' : ''}">${escape(t(l.files.some((f) => f.exists) ? 'new.available' : 'new.notFound'))}</span></div><h3>${escape(l.label)}</h3><p class="path" title="${escape(l.path)}">${escape(l.path)}</p><div class="file-pair">${l.files.map((f) => `<div><span class="file-state ${f.exists ? 'exists' : ''}"></span><span>${escape(f.name)}</span><span>${f.exists ? size(f.size) : escape(t('new.missing'))}</span></div>`).join('')}</div><div class="card-actions"><button data-location="${i}" class="button primary" ${!l.files.some((f) => f.exists) ? 'disabled' : ''}>${escape(t('new.openSave'))}${icon('arrow')}</button><button data-reveal="${i}" class="icon-button" title="${escape(t('buttons.reveal_path'))}" aria-label="${escape(t('buttons.reveal_path'))}">${icon('folder')}</button></div>${l.files.filter((f) => f.exists).length === 2 ? `<div class="source-choice">${escape(t('new.chooseSource'))} ${l.files.map((f) => `<button data-source-path="${escape(f.path)}">${escape(f.name)}</button>`).join('')}</div>` : ''}</article>`).join('') : `<div class="no-locations">${icon('folder')}<p>${escape(t('new.noLocations'))}</p></div>`}</div>
+    <div class="section-heading"><h2>${escape(t('new.detectedSaves'))}</h2><button id="scan" class="text-button" ${discovering ? 'disabled' : ''}>${icon('refresh')}${escape(t('new.rescan'))}</button></div>
+    <div class="location-grid">${discovering ? `<div class="no-locations scanning-state" role="status">${icon('refresh')}<p>${escape(t('new.scanning'))}</p></div>` : locations.length ? locations.map((l, i) => `<article class="location-card"><div class="card-top"><span class="folder-icon">${icon('folder')}</span><span class="badge ${l.files.some((f) => f.exists) ? 'ready' : ''}">${escape(t(l.files.some((f) => f.exists) ? 'new.available' : 'new.notFound'))}</span></div><h3>${escape(l.label)}</h3><p class="path" title="${escape(l.path)}">${escape(l.path)}</p><div class="file-pair">${l.files.map((f) => `<div><span class="file-state ${f.exists ? 'exists' : ''}"></span><span>${escape(f.name)}</span><span>${f.exists ? size(f.size) : escape(t('new.missing'))}</span></div>`).join('')}</div><div class="card-actions"><button data-location="${i}" class="button primary" ${!l.files.some((f) => f.exists) ? 'disabled' : ''}>${escape(t('new.openSave'))}${icon('arrow')}</button><button data-reveal="${i}" class="icon-button" title="${escape(t('buttons.reveal_path'))}" aria-label="${escape(t('buttons.reveal_path'))}">${icon('folder')}</button></div>${l.files.filter((f) => f.exists).length === 2 ? `<div class="source-choice">${escape(t('new.chooseSource'))} ${l.files.map((f) => `<button data-source-path="${escape(f.path)}">${escape(f.name)}</button>`).join('')}</div>` : ''}</article>`).join('') : `<div class="no-locations">${icon('folder')}<p>${escape(t('new.noLocations'))}</p></div>`}</div>
     <div class="home-lower"><section class="recent-section"><div class="section-heading"><h2>${escape(t('new.recent'))}</h2><button class="text-button" id="clear-recents">${escape(t('new.clearHistory'))}</button></div>${
       readRecents().length
         ? readRecents()
@@ -224,8 +241,7 @@ function bindHome() {
   bind('open-file', () => pickFile());
   bind('scan', () =>
     action(async () => {
-      locations = await invoke<Location[]>('discover_saves');
-      render();
+      await discoverSaves();
     }),
   );
   bind('clear-recents', () => {
@@ -274,7 +290,7 @@ function workspace() {
   const counts = new Map<string, number>();
   view.entries.forEach((e) => counts.set(e.category, (counts.get(e.category) ?? 0) + 1));
   const changes = view.entries.filter(changed).length;
-  return `<section class="editor-page"><div class="editor-heading"><div><p class="eyebrow">${escape(t('new.saveWorkspace'))}</p><h1>${escape(basename(view.path))}<span class="badge ${view.dirty ? 'pending' : 'ready'}">${escape(t(view.dirty ? 'new.unsaved' : 'new.saved'))}</span></h1><button id="reveal-current" class="path path-button" title="${escape(view.path)}">${escape(directory(view.path))}${icon('folder')}</button></div><div class="editor-actions">${button('undo', 'new.undo', 'undo', '', !view.canUndo)}${button('redo', 'new.redo', 'redo', '', !view.canRedo)}${button('backup', 'buttons.backup', 'shield')}${button('reload', 'buttons.reload', 'refresh')}${button('save-as', 'buttons.save_as', 'download')}${button('save', view.files.length > 1 ? 'new.saveBoth' : 'buttons.save_in_place', 'save', 'primary')}</div></div>
+  return `<section class="editor-page"><div class="editor-heading"><div><p class="eyebrow">${escape(t('new.saveWorkspace'))}</p><h1>${escape(basename(view.path))}<span class="badge ${view.dirty ? 'pending' : 'ready'}">${escape(t(view.dirty ? 'new.unsaved' : 'new.saved'))}</span></h1><button id="reveal-current" class="path path-button" title="${escape(t('buttons.reveal_path'))}" aria-label="${escape(t('buttons.reveal_path'))}: ${escape(view.path)}">${icon('folder-open')}<span>${escape(view.path)}</span></button></div><div class="editor-actions">${button('undo', 'new.undo', 'undo', '', !view.canUndo)}${button('redo', 'new.redo', 'redo', '', !view.canRedo)}${button('backup', 'buttons.backup', 'shield')}${button('reload', 'buttons.reload', 'refresh')}${button('save-as', 'buttons.save_as', 'download')}${button('save', view.files.length > 1 ? 'new.saveBoth' : 'buttons.save_in_place', 'save', 'primary')}</div></div>
     <div class="save-strip"><span>${icon('file')}${view.files.map((f) => `<span class="paired-name">${escape(f.name)}${!f.exists ? `<small>${escape(t('new.willCreate'))}</small>` : ''}</span>`).join('<span class="pair-plus">+</span>')}</span></div>
     <div class="editor-layout"><aside class="categories"><h2>${escape(t('filters.category'))}</h2><button class="category-button ${category === 'all' ? 'active' : ''}" data-category="all"><span>${escape(t('new.allVariables'))}</span><span>${view.entries.length}</span></button>${Array.from(
       counts,
@@ -300,6 +316,26 @@ function workspace() {
     </div><div class="workspace-footer">${button('review-changes', 'new.reviewChanges', 'changes', '', changes === 0)}<span>${icon('info')}${escape(t('new.editHint'))}</span><button class="text-button" id="show-backup" ${!lastBackup ? 'disabled' : ''}>${escape(t('new.showBackup'))}${icon('arrow')}</button></div>
   </section>`;
 }
+function searchable(entry: Entry) {
+  let text = searchIndex.get(entry.id);
+  if (text === undefined) {
+    text = [entry.key, entry.value, t(entry.category), note(entry), alternateName(entry.key) ?? '']
+      .join('\n')
+      .toLocaleLowerCase();
+    searchIndex.set(entry.id, text);
+  }
+  return text;
+}
+function selectEntry(id: number) {
+  selectedId = id;
+  document.querySelectorAll<HTMLTableRowElement>('tr[data-id]').forEach((row) => {
+    const selected = Number(row.dataset.id) === id;
+    row.classList.toggle('selected', selected);
+    row.setAttribute('aria-selected', String(selected));
+    row.tabIndex = selected ? 0 : -1;
+  });
+  renderInspector();
+}
 function filtered() {
   const q = query.trim().toLocaleLowerCase();
   return (
@@ -307,11 +343,7 @@ function filtered() {
       (e) =>
         (category === 'all' || e.category === category) &&
         (!changedOnly || changed(e)) &&
-        (!q ||
-          [e.key, e.value, t(e.category), note(e), alternateName(e.key) ?? '']
-            .join('\n')
-            .toLocaleLowerCase()
-            .includes(q)),
+        (!q || searchable(e).includes(q)),
     ) ?? []
   );
 }
@@ -325,7 +357,7 @@ function renderRows() {
   document.querySelector('#rows')!.innerHTML = visible
     .map(
       (e) =>
-        `<tr tabindex="0" data-id="${e.id}" class="${selectedId === e.id ? 'selected' : ''} ${changed(e) ? 'changed' : ''}" aria-selected="${selectedId === e.id}"><td><strong class="variable-name" title="${escape(note(e))}">${escape(primaryName(e.key) ?? e.key)}</strong>${gameName(e.key) ? `<small class="variable-alternate" title="${escape(alternateName(e.key) ?? '')}">${escape(alternateName(e.key) ?? '')}</small><small class="variable-key" title="${escape(e.key)}">${escape(e.key)}</small>` : `<small class="variable-note" title="${escape(note(e))}">${escape(note(e))}</small>`}</td><td class="value-cell" title="${escape(e.value)}">${changed(e) ? '<i class="dirty-dot"></i>' : ''}${escape(e.value)}</td></tr>`,
+        `<tr tabindex="${selectedId === e.id ? 0 : -1}" data-id="${e.id}" class="${selectedId === e.id ? 'selected' : ''} ${changed(e) ? 'changed' : ''}" aria-selected="${selectedId === e.id}"><td><strong class="variable-name" title="${escape(note(e))}">${escape(primaryName(e.key) ?? e.key)}</strong>${gameName(e.key) ? `<small class="variable-alternate" title="${escape(alternateName(e.key) ?? '')}">${escape(alternateName(e.key) ?? '')}</small><small class="variable-key" title="${escape(e.key)}">${escape(e.key)}</small>` : `<small class="variable-note" title="${escape(note(e))}">${escape(note(e))}</small>`}</td><td class="value-cell" title="${escape(e.value)}">${changed(e) ? '<i class="dirty-dot"></i>' : ''}${escape(e.value)}</td></tr>`,
     )
     .join('');
   document.querySelector<HTMLElement>('#empty-filter')!.hidden = entries.length > 0;
@@ -338,9 +370,7 @@ function renderRows() {
   document.querySelector<HTMLButtonElement>('#next-page')!.disabled = pageIndex + 1 === pages;
   document.querySelectorAll<HTMLTableRowElement>('tr[data-id]').forEach((row) => {
     const select = () => {
-      selectedId = Number(row.dataset.id);
-      renderRows();
-      renderInspector();
+      selectEntry(Number(row.dataset.id));
     };
     row.onclick = select;
     row.ondblclick = () => {
@@ -358,9 +388,7 @@ function renderRows() {
         const index = visible.findIndex((v) => v.id === Number(row.dataset.id));
         const next = visible[index + (e.key === 'ArrowDown' ? 1 : -1)];
         if (next) {
-          selectedId = next.id;
-          renderRows();
-          renderInspector();
+          selectEntry(next.id);
           document.querySelector<HTMLElement>(`tr[data-id="${next.id}"]`)?.focus();
         }
       }
@@ -480,7 +508,8 @@ function bindWorkspace() {
   document.querySelector<HTMLInputElement>('#search')!.oninput = (e) => {
     query = (e.target as HTMLInputElement).value;
     pageIndex = 0;
-    renderRows();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => renderRows(), 100);
   };
   document.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(
     (b) =>
@@ -536,7 +565,11 @@ function bindWorkspace() {
   renderRows();
   renderInspector();
 }
+function syncInteractivity() {
+  root.querySelector<HTMLElement>('.app-shell')!.inert = busy || reviewing || !!pendingUpdate;
+}
 function renderReview() {
+  syncInteractivity();
   const slot = document.querySelector('#changes-slot')!;
   if (!reviewing || !view) {
     slot.innerHTML = '';
@@ -555,12 +588,14 @@ function renderReview() {
   document.querySelector<HTMLButtonElement>('#close-review')?.focus();
 }
 function renderUpdate() {
+  syncInteractivity();
   const slot = document.querySelector('#update-slot')!;
   if (!pendingUpdate) {
     slot.innerHTML = '';
     return;
   }
   slot.innerHTML = `<div class="modal-backdrop"><section class="update-modal" role="dialog" aria-modal="true" aria-labelledby="update-title"><span class="folder-icon">${icon('download')}</span><h2 id="update-title">${escape(t('update.available', { version: pendingUpdate.version }))}</h2><p>${escape(pendingUpdate.title || t('update.current_new'))}</p><pre>${escape(pendingUpdate.changelog || t('update.no_changelog'))}</pre><div>${button('update-later', 'update.later', 'close')}${button('update-download', 'update.download', 'arrow', 'primary')}</div></section></div>`;
+  document.querySelector<HTMLButtonElement>('#update-later')?.focus();
   bind('update-later', () => {
     pendingUpdate = null;
     renderUpdate();
@@ -573,6 +608,10 @@ function renderUpdate() {
 }
 document.addEventListener('keydown', (e) => {
   const cmd = e.ctrlKey || e.metaKey;
+  if (busy && (cmd || e.key === 'F5')) {
+    e.preventDefault();
+    return;
+  }
   if (reviewing && e.key === 'Escape') {
     e.preventDefault();
     reviewing = false;
@@ -580,9 +619,11 @@ document.addEventListener('keydown', (e) => {
     document.querySelector<HTMLButtonElement>('#review-changes')?.focus();
     return;
   }
-  if (reviewing && e.key === 'Tab') {
+  if ((reviewing || pendingUpdate) && e.key === 'Tab') {
     const buttons = [
-      ...document.querySelectorAll<HTMLButtonElement>('.changes-modal button:not(:disabled)'),
+      ...document.querySelectorAll<HTMLButtonElement>(
+        '.changes-modal button:not(:disabled), .update-modal button:not(:disabled)',
+      ),
     ];
     const first = buttons[0],
       last = buttons.at(-1);
@@ -594,6 +635,12 @@ document.addEventListener('keydown', (e) => {
       first?.focus();
     }
   }
+  if (pendingUpdate && e.key === 'Escape') {
+    pendingUpdate = null;
+    renderUpdate();
+    return;
+  }
+  if (reviewing || pendingUpdate) return;
   const typing =
     e.target instanceof HTMLElement &&
     (e.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName));
@@ -621,10 +668,6 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     void load(view.path);
   }
-  if (e.key === 'Escape' && pendingUpdate) {
-    pendingUpdate = null;
-    renderUpdate();
-  }
 });
 window.addEventListener('beforeunload', (e) => {
   if (view?.dirty) {
@@ -632,32 +675,46 @@ window.addEventListener('beforeunload', (e) => {
     e.returnValue = '';
   }
 });
-let nameLoadError = false;
-try {
-  await loadGameNames();
-} catch (error) {
-  console.error(error);
-  nameLoadError = true;
+async function discoverSaves() {
+  discovering = true;
+  if (page === 'home') render();
+  try {
+    locations = await invoke<Location[]>('discover_saves');
+  } finally {
+    discovering = false;
+    if (page === 'home') render();
+  }
 }
 render();
-if (nameLoadError) toast(t('new.namesUnavailable'), true);
 if (isTauri()) {
-  void invoke<Location[]>('discover_saves')
-    .then((data) => {
-      locations = data;
-      if (page === 'home') render();
-      if (localStorage.getItem('cts.autoload') !== 'false') {
-        const location = data.find((l) => l.files.some((f) => f.exists));
-        if (location) void load(location.path);
-      }
-    })
-    .catch((e) => toast(String(e), true));
-  void invoke<Update | null>('check_update', { locale: getLocale() })
-    .then((update) => {
-      pendingUpdate = update;
-      renderUpdate();
-    })
-    .catch(() => {});
+  // Allow the interface to paint before starting disk discovery.
+  requestAnimationFrame(() =>
+    setTimeout(() => {
+      void discoverSaves()
+        .then(() => {
+          // A manual open takes precedence over automatic startup loading.
+          if (
+            !view &&
+            !busy &&
+            page === 'home' &&
+            localStorage.getItem('cts.autoload') !== 'false'
+          ) {
+            const location = locations.find((l) => l.files.some((f) => f.exists));
+            if (location) void load(location.path);
+          }
+        })
+        .catch((error) => toast(String(error), true));
+    }, 0),
+  );
+  // Optional update checks must not compete with startup work.
+  setTimeout(() => {
+    void invoke<Update | null>('check_update', { locale: getLocale() })
+      .then((update) => {
+        pendingUpdate = update;
+        renderUpdate();
+      })
+      .catch(() => {});
+  }, 5000);
   const win = getCurrentWindow();
   void win.onCloseRequested(async (e) => {
     if (busy) {

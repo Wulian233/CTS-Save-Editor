@@ -640,9 +640,8 @@ kbd {
   font-size: 12px;
   color: var(--muted);
   font-family: var(--mono);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   line-height: 1.7;
 }
 
@@ -762,6 +761,7 @@ kbd {
 .recent-row strong {
   font-size: 12px;
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .recent-row small {
@@ -769,9 +769,8 @@ kbd {
   font-size: 12px;
   margin-top: 4px;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .recent-row > .icon:last-child {
@@ -878,11 +877,15 @@ kbd {
 
 .editor-heading > div:first-child {
   min-width: 0;
+  flex: 1 1 280px;
+  max-width: 100%;
 }
 
 .editor-heading h1 {
   font-size: 22px;
   display: flex;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
   align-items: center;
   gap: 12px;
 }
@@ -895,15 +898,21 @@ kbd {
 
 .path-button {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  max-width: 380px;
+  max-width: 100%;
   padding: 4px 0;
+  text-align: left;
+}
+
+.path-button > span {
+  min-width: 0;
 }
 
 .path-button .icon {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
 }
 
 .editor-actions {
@@ -1542,6 +1551,37 @@ tr.selected .variable-name {
   cursor: progress;
 }
 
+.operation-status {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 5px 30px var(--shadow);
+  z-index: 55;
+}
+
+.busy .operation-status {
+  display: flex;
+}
+
+.operation-status .icon,
+.scanning-state .icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .busy button,
 .busy input,
 .busy textarea,
@@ -1850,6 +1890,10 @@ tr.selected .variable-name {
     flex-direction: column;
   }
 
+  .editor-heading > div:first-child {
+    flex-basis: auto;
+  }
+
   .editor-layout {
     grid-template-columns: 1fr;
   }
@@ -1887,6 +1931,10 @@ tr.selected .variable-name {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .operation-status .icon,
+  .scanning-state .icon {
+    animation: none;
+  }
   .table-scroll {
     scroll-behavior: auto;
   }

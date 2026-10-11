@@ -100,7 +100,13 @@ struct Location {
 }
 
 #[tauri::command]
-fn discover_saves() -> Vec<Location> {
+async fn discover_saves() -> Result<Vec<Location>, String> {
+    tauri::async_runtime::spawn_blocking(discover_save_locations)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+fn discover_save_locations() -> Vec<Location> {
     let Some(home) = dirs::home_dir() else {
         return Vec::new();
     };

@@ -227,6 +227,8 @@
     "undoDone": "已撤销修改",
     "redoDone": "已重做修改",
     "columnName": "名称 / 变量",
-    "namesUnavailable": "游戏语言文件加载失败，暂时显示变量名。"
+    "namesUnavailable": "游戏语言文件加载失败，暂时显示变量名。",
+    "scanning": "正在查找本地存档…",
+    "processing": "正在处理，请稍候…"
   }
 }
