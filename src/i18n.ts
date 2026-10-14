@@ -32,4 +32,4 @@ export function t(key: string, args: Record<string, string | number> = {}): stri
     lookup((locale === 'zh-CN' ? zh : en) as Catalog, key) ?? lookup(en as Catalog, key) ?? key;
   return value.replace(/\{(\w+)\}/g, (_, name: string) => String(args[name] ?? `{${name}}`));
 }
-setLocale(locale);
+document.documentElement.lang = locale;

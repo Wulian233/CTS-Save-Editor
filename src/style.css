@@ -1315,27 +1315,6 @@ tr.selected .variable-name {
   overflow-wrap: anywhere;
 }
 
-.bilingual-name {
-  margin-top: 16px;
-  padding: 12px 14px;
-  background: var(--soft);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-.bilingual-name :where(div + div) {
-  margin-top: 12px;
-}
-.bilingual-name span {
-  display: block;
-  font-size: 11px;
-  color: var(--muted);
-}
-.bilingual-name p {
-  margin: 3px 0 0;
-  font-size: 14px;
-  color: var(--text);
-  overflow-wrap: anywhere;
-}
 .compact-category {
   display: none;
   align-items: center;

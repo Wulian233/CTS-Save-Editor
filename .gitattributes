@@ -3,4 +3,9 @@
 *.ico binary
 *.icns binary
 *.bin binary
+
 src/data/game-*.txt -text
+src/data/game-*.txt generated
+
+Cargo.lock generated
+package-lock.json generated
