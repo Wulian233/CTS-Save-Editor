@@ -1,6 +1,6 @@
 {
   "name": "cts-save-editor",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,17 +13,17 @@
     "lint:fix": "oxlint --fix --deny-warnings src vite.config.ts && biome lint src/style.css --write --error-on-warnings"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.12.1",
-    "@tauri-apps/plugin-dialog": "2.8.1",
-    "@tauri-apps/plugin-opener": "2.7.0",
-    "lucide": "^1.57.0"
+    "@tauri-apps/api": "2.12.5",
+    "@tauri-apps/plugin-dialog": "2.8.4",
+    "@tauri-apps/plugin-opener": "2.7.3",
+    "lucide": "^1.75.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
-    "@tauri-apps/cli": "2.12.1",
-    "oxlint": "^1.88.0",
-    "prettier": "^3.9.9",
+    "@biomejs/biome": "^2.6.8",
+    "@tauri-apps/cli": "2.12.5",
+    "oxlint": "^1.94.0",
+    "prettier": "^3.10.1",
     "typescript": "7.0.2",
-    "vite": "8.3.4"
+    "vite": "8.3.8"
   }
 }

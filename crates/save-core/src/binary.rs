@@ -1,5 +1,7 @@
 use crate::{Entry, categories, numbers};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+const KNOWN_OBJECT_HEADERS: &[u8] = &[0x25, 0x27];
 
 #[derive(Debug)]
 struct Record {
@@ -64,17 +66,54 @@ fn scan(data: &[u8]) -> Vec<Record> {
     records
 }
 
-pub fn parse(data: &[u8]) -> Vec<Entry> {
-    let records = scan(data);
-    let positions: HashMap<usize, &Record> =
-        records.iter().map(|r| (r.length_pos - 5, r)).collect();
+fn plausible_number(owned: f64, exp: i64) -> bool {
+    if !owned.is_finite() {
+        return false;
+    }
+    if owned == 0.0 {
+        return exp == 0;
+    }
+    let a = owned.abs();
+    (1e-6..1e6).contains(&a) && exp.abs() <= 1_000_000
+}
+
+fn find_items(data: &[u8], records: &[Record]) -> HashMap<u32, usize> {
+    let mut referenced = HashSet::new();
+    for key in records {
+        let p = key.end;
+        if !key.text.is_empty() && p + 5 <= data.len() && data[p] == 9 {
+            referenced.insert(u32::from_le_bytes(data[p + 1..p + 5].try_into().unwrap()));
+        }
+    }
     let mut items = HashMap::new();
     for i in 0..data.len().saturating_sub(24) {
-        if data[i] == 1 && data[i + 5] == 0x25 {
+        if data[i] == 1 && KNOWN_OBJECT_HEADERS.contains(&data[i + 5]) {
             let id = u32::from_le_bytes(data[i + 1..i + 5].try_into().unwrap());
             items.entry(id).or_insert(i);
         }
     }
+    for i in 0..data.len().saturating_sub(24) {
+        if data[i] != 1 {
+            continue;
+        }
+        let id = u32::from_le_bytes(data[i + 1..i + 5].try_into().unwrap());
+        if !referenced.contains(&id) || items.contains_key(&id) {
+            continue;
+        }
+        let owned = f64::from_le_bytes(data[i + 9..i + 17].try_into().unwrap());
+        let exp = i64::from_le_bytes(data[i + 17..i + 25].try_into().unwrap());
+        if plausible_number(owned, exp) {
+            items.insert(id, i);
+        }
+    }
+    items
+}
+
+pub fn parse(data: &[u8]) -> Vec<Entry> {
+    let records = scan(data);
+    let positions: HashMap<usize, &Record> =
+        records.iter().map(|r| (r.length_pos - 5, r)).collect();
+    let items = find_items(data, &records);
     let mut entries = Vec::new();
     for key in &records {
         if key.text.is_empty() {
