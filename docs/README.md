@@ -27,7 +27,7 @@ English | [Simplified Chinese](./README-cn.md)
 You can customize the update source via an environment variable:
 
 ```powershell
-$env:CTS_UPDATE_JSON_URL="http://cdn.maxing.site/update/app/cts_save_editor.json"
+$env:CTS_UPDATE_JSON_URL="https://files.vmct.top/vm-resources/update/app/cts_save_editor.json"
 ```
 
 ## 📄 Update JSON Format
