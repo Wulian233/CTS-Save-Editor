@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "cts-save-core"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -733,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "cts-save-editor"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "cts-save-core",
  "dirs",
