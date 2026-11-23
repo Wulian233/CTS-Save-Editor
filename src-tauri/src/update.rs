@@ -89,7 +89,7 @@ fn parse(data: &Value, locale: &str) -> Option<Update> {
 #[tauri::command]
 pub async fn check_update(locale: String) -> Option<Update> {
     let url = std::env::var("CTS_UPDATE_JSON_URL")
-        .unwrap_or_else(|_| "http://cdn.maxing.site/update/app/cts_save_editor.json".into());
+        .unwrap_or_else(|_| "https://files.vmct.top/vm-resources/update/app/cts_save_editor.json".into());
     if url.trim().is_empty() {
         return None;
     }

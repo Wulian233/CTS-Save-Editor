@@ -27,7 +27,7 @@
 可以通过环境变量自定义更新源：
 
 ```powershell
-$env:CTS_UPDATE_JSON_URL="http://cdn.maxing.site/update/app/cts_save_editor.json"
+$env:CTS_UPDATE_JSON_URL="https://files.vmct.top/vm-resources/update/app/cts_save_editor.json"
 ```
 
 ## 📄 更新 JSON 格式
